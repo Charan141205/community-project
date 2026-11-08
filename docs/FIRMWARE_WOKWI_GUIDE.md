@@ -41,7 +41,47 @@ This document details the hardware configuration, pinout assignments, algorithm 
 
 ---
 
-## 4. Node Switching & Presets
+## 4. Physical ESP32 Hardware Deployment & Flashing
+
+To flash the code onto an actual physical ESP32 microcontroller board:
+
+### A. Code Preparation
+1. Open [`firmware/sketch.ino`](../firmware/sketch.ino).
+2. Change the simulation toggle from `true` to `false`:
+   ```cpp
+   #define USE_WOKWI_SIMULATION false
+   ```
+3. Enter your physical Wi-Fi network credentials and cloud MQTT broker settings:
+   ```cpp
+   const char* WIFI_SSID     = "Your_Home_Or_Office_WiFi";
+   const char* WIFI_PASSWORD = "Your_WiFi_Password";
+   const char* MQTT_BROKER   = "broker.hivemq.com"; // Or your cloud broker domain
+   const int   MQTT_PORT     = 1883;
+   const char* MQTT_USER     = "";                  // If using authenticated MQTT
+   const char* MQTT_PASSWORD = "";
+   ```
+
+### B. Flashing via VS Code & PlatformIO (Recommended)
+1. Open the project root in VS Code with the **PlatformIO IDE** extension installed.
+2. Connect your ESP32 to your computer via micro-USB or USB-C.
+3. Run the PlatformIO upload and serial monitor command:
+   ```bash
+   pio run --target upload --target monitor -d firmware
+   ```
+
+### C. Flashing via Arduino IDE
+1. Open [`firmware/sketch.ino`](../firmware/sketch.ino) in Arduino IDE 2.x.
+2. In **Tools > Board**, select **ESP32 Dev Module** (or your specific ESP32 board).
+3. In **Tools > Port**, select the COM port of your connected ESP32.
+4. Install the required libraries via **Sketch > Include Library > Manage Libraries...**:
+   - `PubSubClient` by Nick O'Leary
+   - `ArduinoJson` by Benoît Blanchon
+   - `ESP32Servo` by Kevin Harrington
+5. Click **Upload** (Arrow button) and open Serial Monitor at **115200 baud**.
+
+---
+
+## 5. Node Switching & Presets
 
 The firmware contains built-in configurations for 3 primary flood flashpoints along Hyderabad's Musi River. Change `#define SELECTED_NODE` at the top of [`firmware/sketch.ino`](../firmware/sketch.ino):
 

@@ -166,5 +166,6 @@ All 24 test cases pass with 100% coverage, verifying:
 
 - 📐 [**System Architecture & Data Flows**](docs/ARCHITECTURE.md)
 - 🔌 [**REST & WebSocket API Reference**](docs/API_REFERENCE.md)
-- 🛠️ [**ESP32 Firmware & Wokwi Simulation Guide**](docs/FIRMWARE_WOKWI_GUIDE.md)
+- 📲 [**Live Twilio SMS & WhatsApp Setup Guide**](docs/TWILIO_SETUP.md)
+- 🛠️ [**ESP32 Firmware & Hardware Flashing Guide**](docs/FIRMWARE_WOKWI_GUIDE.md)
 - 📋 [**Full Verification Report & Proofs**](docs/VERIFICATION_REPORT.md)
