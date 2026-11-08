@@ -83,17 +83,17 @@ To flash the code onto an actual physical ESP32 microcontroller board:
 
 ## 5. Node Switching & Presets
 
-The firmware contains built-in configurations for 3 primary flood flashpoints along Hyderabad's Musi River. Change `#define SELECTED_NODE` at the top of [`firmware/sketch.ino`](../firmware/sketch.ino):
+The firmware contains built-in configurations for 3 primary flood flashpoints in Tirupati. Change `#define SELECTED_NODE` at the top of [`firmware/sketch.ino`](../firmware/sketch.ino):
 
 ```cpp
-#define SELECTED_NODE 1  // 1: Moosarambagh Bridge, 2: Chaderghat Causeway, 3: Amberpet Nallah
+#define SELECTED_NODE 1  // 1: Kapilatheertham Nallah, 2: Leela Mahal Culvert, 3: Railway Underbridge (West)
 ```
 
 | Preset | Node ID | Location | Mount Height | Capacity |
 |---|---|---|---|---|
-| 1 | `drain-01` | Moosarambagh Bridge | 200 cm | 180 cm |
-| 2 | `drain-02` | Chaderghat Causeway | 220 cm | 200 cm |
-| 3 | `drain-03` | Amberpet Nallah | 180 cm | 150 cm |
+| 1 | `drain-01` | Kapilatheertham Nallah | 200 cm | 180 cm |
+| 2 | `drain-02` | Leela Mahal Culvert | 220 cm | 200 cm |
+| 3 | `drain-03` | Railway Underbridge (West) | 180 cm | 150 cm |
 
 ---
 

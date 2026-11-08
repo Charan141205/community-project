@@ -37,7 +37,7 @@ async def test_subscribers_registration():
         payload = {
             "phone": "+919988776655",
             "name": "Prasad Rao",
-            "ward": "Amberpet",
+            "ward": "Alipiri",
             "language": "te",
             "opted_in": True,
         }
@@ -52,7 +52,7 @@ async def test_subscribers_registration():
 async def test_evacuation_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/api/evacuation?lat=17.3710&lon=78.5085")
+        resp = await client.get("/api/evacuation?lat=13.6500&lon=79.4210")
         assert resp.status_code == 200
         data = resp.json()
         assert "shelter" in data

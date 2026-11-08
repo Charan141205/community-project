@@ -15,10 +15,10 @@ interface FloodMapInnerProps {
 }
 
 const DEFAULT_SHELTERS: Shelter[] = [
-  { id: "s1", name: "Amberpet Indoor Stadium Camp", lat: 17.3980, lon: 78.5150, capacity: 450, current_occupancy: 42, ward: "Amberpet" },
-  { id: "s2", name: "Nimboliadda Community Hall", lat: 17.3820, lon: 78.4950, capacity: 250, current_occupancy: 15, ward: "Malakpet" },
-  { id: "s3", name: "Chaderghat Govt High School", lat: 17.3760, lon: 78.4870, capacity: 300, current_occupancy: 20, ward: "Malakpet" },
-  { id: "s4", name: "City Model High School & Relief Centre", lat: 17.3680, lon: 78.4680, capacity: 350, current_occupancy: 30, ward: "Charminar" },
+  { id: "s1", name: "SV High School & Relief Camp", lat: 13.6410, lon: 79.4120, capacity: 450, current_occupancy: 42, ward: "Alipiri" },
+  { id: "s2", name: "Mahati Community Relief Centre", lat: 13.6295, lon: 79.4200, capacity: 350, current_occupancy: 15, ward: "Tata Nagar" },
+  { id: "s3", name: "Municipal High School Korlagunta", lat: 13.6350, lon: 79.4310, capacity: 300, current_occupancy: 20, ward: "Korlagunta" },
+  { id: "s4", name: "SV University Indoor Stadium Camp", lat: 13.6320, lon: 79.4005, capacity: 500, current_occupancy: 30, ward: "SVU Campus" },
 ];
 
 function createNodeIcon(level: RiskLevel, status: string, name: string) {
@@ -132,8 +132,8 @@ export const FloodMapInner: React.FC<FloodMapInnerProps> = ({
   onMapClick,
   shelters = DEFAULT_SHELTERS,
 }) => {
-  // Center on Hyderabad Musi River basin
-  const center: [number, number] = [17.3753, 78.4900];
+  // Center on Tirupati Swarnamukhi basin & urban flashpoints
+  const center: [number, number] = [13.6300, 79.4200];
 
   const routePositions: [number, number][] = evacuationRoute
     ? evacuationRoute.geojson.geometry.coordinates.map((c) => [c[1], c[0]])

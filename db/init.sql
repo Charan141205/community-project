@@ -1,5 +1,5 @@
 -- ============================================================================
--- flood-ews: TimescaleDB Initialization Schema & Hyderabad Seed Data
+-- flood-ews: TimescaleDB Initialization Schema & Tirupati Seed Data
 -- ============================================================================
 
 -- 1. Enable TimescaleDB Extension if available
@@ -128,18 +128,18 @@ CREATE TABLE IF NOT EXISTS gate_audit_logs (
 );
 
 -- ============================================================================
--- SEED DATA (Hyderabad Musi River Basin Flood Flashpoints)
+-- SEED DATA (Tirupati Swarnamukhi Basin & Seshachalam Foothills Flashpoints)
 -- ============================================================================
 
 -- Seed 6 Drainage Sensor Nodes
 INSERT INTO nodes (id, name, lat, lon, ward, mount_height_cm, capacity_cm, status, last_seen, current_gate_deg)
 VALUES
-    ('drain-01', 'Moosarambagh Bridge', 17.3705, 78.5080, 'Amberpet', 200.0, 180.0, 'online', NOW(), 0),
-    ('drain-02', 'Chaderghat Causeway', 17.3789, 78.4902, 'Malakpet', 220.0, 200.0, 'online', NOW(), 0),
-    ('drain-03', 'Amberpet Nallah', 17.3912, 78.5201, 'Amberpet', 180.0, 150.0, 'online', NOW(), 0),
-    ('drain-04', 'Afzalgunj Siphon', 17.3734, 78.4776, 'Charminar', 210.0, 190.0, 'online', NOW(), 0),
-    ('drain-05', 'Purana Pul Culvert', 17.3621, 78.4590, 'Goshamahal', 190.0, 160.0, 'online', NOW(), 0),
-    ('drain-06', 'Malakpet Railway Underpass', 17.3750, 78.4985, 'Malakpet', 230.0, 210.0, 'online', NOW(), 0)
+    ('drain-01', 'Kapilatheertham Nallah', 13.6508, 79.4215, 'Alipiri', 200.0, 180.0, 'online', NOW(), 0),
+    ('drain-02', 'Leela Mahal Culvert', 13.6370, 79.4285, 'Korlagunta', 220.0, 200.0, 'online', NOW(), 0),
+    ('drain-03', 'Railway Underbridge (West)', 13.6255, 79.4205, 'Tata Nagar', 180.0, 150.0, 'online', NOW(), 0),
+    ('drain-04', 'Korlagunta Storm Canal', 13.6330, 79.4350, 'Korlagunta', 210.0, 190.0, 'online', NOW(), 0),
+    ('drain-05', 'Alipiri Footpath Channel', 13.6450, 79.4070, 'Alipiri', 190.0, 160.0, 'online', NOW(), 0),
+    ('drain-06', 'Tiruchanur Swarnamukhi Causeway', 13.6095, 79.4505, 'Tiruchanur', 230.0, 210.0, 'online', NOW(), 0)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     lat = EXCLUDED.lat,
@@ -151,10 +151,10 @@ ON CONFLICT (id) DO UPDATE SET
 -- Seed 4 Disaster Relief Shelters
 INSERT INTO shelters (id, name, lat, lon, capacity, current_occupancy, ward, contact_phone)
 VALUES
-    ('shelter-01', 'Amberpet Indoor Stadium Relief Camp', 17.3980, 78.5150, 450, 42, 'Amberpet', '+91-40-27401122'),
-    ('shelter-02', 'Nimboliadda Community Hall', 17.3820, 78.4950, 250, 15, 'Malakpet', '+91-40-24552233'),
-    ('shelter-03', 'Chaderghat Govt High School Shelter', 17.3760, 78.4870, 300, 20, 'Malakpet', '+91-40-24754455'),
-    ('shelter-04', 'City Model High School & Relief Centre', 17.3680, 78.4680, 350, 30, 'Charminar', '+91-40-24526677')
+    ('shelter-01', 'SV High School & Relief Camp', 13.6410, 79.4120, 450, 42, 'Alipiri', '+91-877-2287111'),
+    ('shelter-02', 'Mahati Community Relief Centre', 13.6295, 79.4200, 350, 15, 'Tata Nagar', '+91-877-2264222'),
+    ('shelter-03', 'Municipal High School Korlagunta', 13.6350, 79.4310, 300, 20, 'Korlagunta', '+91-877-2245333'),
+    ('shelter-04', 'SV University Indoor Stadium Relief Camp', 13.6320, 79.4005, 500, 30, 'SVU Campus', '+91-877-2248444')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     lat = EXCLUDED.lat,
@@ -165,11 +165,11 @@ ON CONFLICT (id) DO UPDATE SET
 -- Seed 5 Multilingual Subscribers
 INSERT INTO subscribers (phone, name, ward, language, opted_in)
 VALUES
-    ('+919876543210', 'Ramesh Kumar', 'Amberpet', 'te', TRUE),
-    ('+919876543211', 'Sunita Sharma', 'Malakpet', 'hi', TRUE),
-    ('+919876543212', 'Mohammed Abdul', 'Charminar', 'en', TRUE),
-    ('+919876543213', 'Lakshmi Reddy', 'Amberpet', 'te', TRUE),
-    ('+919876543214', 'Vikram Singh', 'Goshamahal', 'hi', TRUE)
+    ('+919876543210', 'K. Venkataswamy', 'Alipiri', 'te', TRUE),
+    ('+919876543211', 'Sujata Sharma', 'Korlagunta', 'hi', TRUE),
+    ('+919876543212', 'Dr. K. Srinivas', 'Tata Nagar', 'en', TRUE),
+    ('+919876543213', 'Lakshmi Devi', 'Alipiri', 'te', TRUE),
+    ('+919876543214', 'Rajesh Varma', 'Tiruchanur', 'hi', TRUE)
 ON CONFLICT (phone) DO UPDATE SET
     name = EXCLUDED.name,
     ward = EXCLUDED.ward,

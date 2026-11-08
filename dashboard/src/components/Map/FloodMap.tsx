@@ -9,7 +9,7 @@ const DynamicMap = dynamic(() => import("./FloodMapInner"), {
   loading: () => (
     <div className="w-full h-full flex flex-col items-center justify-center bg-surface text-gray-400">
       <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-      <span className="text-sm font-medium">Loading Hyderabad GIS Drainage Map...</span>
+      <span className="text-sm font-medium">Loading Tirupati GIS Drainage Map...</span>
     </div>
   ),
 });

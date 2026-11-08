@@ -116,7 +116,7 @@ export default function PublicPage() {
               <h1 className="text-sm md:text-base font-bold text-white tracking-tight flex items-center gap-2">
                 flood-ews <span className="text-xs font-normal text-gray-400">| Community Portal</span>
               </h1>
-              <p className="text-[10px] text-gray-400">Musi River Basin & Urban Stormwater Watch</p>
+              <p className="text-[10px] text-gray-400">Tirupati Swarnamukhi Basin & Stormwater Watch</p>
             </div>
           </Link>
 

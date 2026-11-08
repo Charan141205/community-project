@@ -105,12 +105,12 @@ sequenceDiagram
 
 ## 5. Simulating Multiple Nodes in Wokwi
 
-To simulate different flashpoints along the Musi River in Wokwi, simply change the `#define SELECTED_NODE` constant at line 37 in `sketch.ino`:
+To simulate different flashpoints in Tirupati in Wokwi, simply change the `#define SELECTED_NODE` constant at line 35 in `sketch.ino`:
 
 ```cpp
-#define SELECTED_NODE 1  // Node 1: Moosarambagh Bridge (180cm capacity)
-// #define SELECTED_NODE 2  // Node 2: Chaderghat Causeway (200cm capacity)
-// #define SELECTED_NODE 3  // Node 3: Amberpet Nallah (150cm capacity)
+#define SELECTED_NODE 1  // Node 1: Kapilatheertham Nallah (180cm capacity)
+// #define SELECTED_NODE 2  // Node 2: Leela Mahal Culvert (200cm capacity)
+// #define SELECTED_NODE 3  // Node 3: Railway Underbridge (West) (150cm capacity)
 ```
 
 Each preset automatically configures the appropriate node ID, channel mount height, and street flood overflow capacity.

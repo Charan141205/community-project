@@ -17,7 +17,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-semibold text-emerald-400">Basin Live: Musi River, Hyderabad</span>
+          <span className="text-xs font-semibold text-emerald-400">Basin Live: Swarnamukhi River, Tirupati</span>
         </div>
       </div>
 

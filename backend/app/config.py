@@ -44,8 +44,9 @@ class Settings(BaseSettings):
 
     # Predictive Weather Integration (Open-Meteo & IMD)
     PREDICTIVE_WEATHER_ENABLED: bool = True
-    WEATHER_API_LAT: float = 17.3753  # Hyderabad Musi River center
-    WEATHER_API_LON: float = 78.4900
+    WEATHER_API_LAT: float = 13.6288  # Tirupati Swarnamukhi River & Seshachalam Foothills center
+    WEATHER_API_LON: float = 79.4192
+    WEATHER_API_LOCATION_NAME: str = "Tirupati, Andhra Pradesh, India"
     WEATHER_CACHE_MINUTES: int = 30
     PREDICTIVE_RAIN_WATCH_THRESHOLD: float = 40.0  # mm/h forecast triggering pre-emptive WATCH
 

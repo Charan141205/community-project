@@ -36,17 +36,17 @@
 
 #if SELECTED_NODE == 1
   const char* NODE_ID = "drain-01";
-  const char* LOCATION_NAME = "Moosarambagh Bridge";
+  const char* LOCATION_NAME = "Kapilatheertham Nallah";
   const float MOUNT_HEIGHT_CM = 200.0;  // Height of sensor from channel floor
   const float CAPACITY_CM     = 180.0;  // Max water depth before street overflow
 #elif SELECTED_NODE == 2
   const char* NODE_ID = "drain-02";
-  const char* LOCATION_NAME = "Chaderghat Causeway";
+  const char* LOCATION_NAME = "Leela Mahal Culvert";
   const float MOUNT_HEIGHT_CM = 220.0;
   const float CAPACITY_CM     = 200.0;
 #elif SELECTED_NODE == 3
   const char* NODE_ID = "drain-03";
-  const char* LOCATION_NAME = "Amberpet Nallah";
+  const char* LOCATION_NAME = "Railway Underbridge (West)";
   const float MOUNT_HEIGHT_CM = 180.0;
   const float CAPACITY_CM     = 150.0;
 #else

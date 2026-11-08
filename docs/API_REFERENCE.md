@@ -26,14 +26,14 @@ Returns the operational health of backend services, database connection status, 
 ---
 
 ### `GET /api/weather/forecast?refresh=false`
-Retrieves live 6-hour precipitation forecasts for the Hyderabad catchment basin from Open-Meteo API.
+Retrieves live 6-hour precipitation forecasts for the Tirupati catchment basin from Open-Meteo API.
 
 **Response (200 OK):**
 ```json
 {
   "source": "Open-Meteo Meteorological Service",
-  "latitude": 17.3753,
-  "longitude": 78.4900,
+  "latitude": 13.6288,
+  "longitude": 79.4192,
   "fetched_at": "2026-11-08T06:12:00Z",
   "current_precipitation_mm_h": 12.4,
   "max_forecast_3h_mm_h": 46.2,
@@ -55,10 +55,10 @@ Lists all monitored drainage sensor nodes, including their latest telemetry, fil
 [
   {
     "id": "drain-01",
-    "name": "Moosarambagh Bridge",
-    "lat": 17.3705,
-    "lon": 78.508,
-    "ward": "Amberpet",
+    "name": "Kapilatheertham Nallah",
+    "lat": 13.6508,
+    "lon": 79.4215,
+    "ward": "Alipiri",
     "mount_height_cm": 200.0,
     "capacity_cm": 180.0,
     "status": "online",
@@ -128,41 +128,42 @@ Operator override endpoint to manually actuate the floodgate (open: 0°, closed:
 Computes the optimal safe evacuation route from coordinates to the nearest shelter, dynamically avoiding submerged roadways.
 
 **Query Parameters:**
-- `lat` (required): Citizen Latitude, e.g. `17.3710`
-- `lon` (required): Citizen Longitude, e.g. `78.5085`
+- `lat` (required): Citizen Latitude, e.g. `13.6500`
+- `lon` (required): Citizen Longitude, e.g. `79.4210`
 
 **Response (200 OK):**
 ```json
 {
   "shelter": {
-    "id": "shelter-02",
-    "name": "Nimboliadda Community Hall",
-    "lat": 17.382,
-    "lon": 78.495,
-    "capacity": 250,
-    "current_occupancy": 15,
-    "ward": "Malakpet",
-    "contact_phone": "+91-40-24552233"
+    "id": "shelter-01",
+    "name": "SV High School & Relief Camp",
+    "lat": 13.6410,
+    "lon": 79.4120,
+    "capacity": 450,
+    "current_occupancy": 42,
+    "ward": "Alipiri",
+    "contact_phone": "+91-877-2287111"
   },
-  "distance_km": 2.28,
-  "eta_minutes": 5.5,
-  "avoided_flooded_nodes": ["drain-01", "drain-02"],
+  "distance_km": 3.28,
+  "eta_minutes": 6.8,
+  "avoided_flooded_nodes": ["drain-03"],
   "geojson": {
     "type": "Feature",
     "geometry": {
       "type": "LineString",
       "coordinates": [
-        [78.5085, 17.371],
-        [78.5095, 17.3712],
-        [78.5, 17.3765],
-        [78.495, 17.382]
+        [79.4210, 13.6500],
+        [79.4215, 13.6508],
+        [79.4070, 13.6450],
+        [79.4150, 13.6390],
+        [79.4120, 13.6410]
       ]
     },
     "properties": {
-      "distance_km": 2.28,
-      "eta_minutes": 5.5,
-      "target_shelter": "Nimboliadda Community Hall",
-      "avoided_drains": ["drain-01", "drain-02"]
+      "distance_km": 3.28,
+      "eta_minutes": 6.8,
+      "target_shelter": "SV High School & Relief Camp",
+      "avoided_drains": ["drain-03"]
     }
   }
 }

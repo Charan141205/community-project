@@ -6,7 +6,7 @@
 [![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PostgreSQL-FDB515.svg?logo=postgresql&logoColor=white)](https://www.timescale.com)
 [![MQTT](https://img.shields.io/badge/MQTT-v5.0%20%7C%20v3.1.1-660066.svg?logo=eclipse-mosquitto&logoColor=white)](https://mosquitto.org)
 
-`flood-ews` is an end-to-end IoT, geospatial, and urban resilience early warning system designed to protect vulnerable neighborhoods and low-lying roadways from flash floods and sewer backflow. Centered on flood flashpoints along the Musi River basin in Hyderabad, India, it integrates virtual ESP32 sensor nodes simulated in **Wokwi** (with zero physical hardware required), an automated SCADA floodgate controller, a TimescaleDB time-series backend, a multilingual disaster alert dispatcher, dynamic evacuation routing, and an interactive Next.js map dashboard.
+`flood-ews` is an end-to-end IoT, geospatial, and urban resilience early warning system designed to protect vulnerable neighborhoods and low-lying roadways from flash floods and sewer backflow. Centered on flood flashpoints along the Swarnamukhi River basin and Seshachalam foothill storm nallahs in Tirupati, Andhra Pradesh, India, it integrates virtual ESP32 sensor nodes simulated in **Wokwi** (with zero physical hardware required), an automated SCADA floodgate controller, a TimescaleDB time-series backend, a multilingual disaster alert dispatcher (Telugu, English, Hindi), dynamic evacuation routing, and an interactive Next.js map dashboard.
 
 > 💡 **100% Simulation-Based**: This project runs entirely via software simulation using **Wokwi** (for interactive ESP32, ultrasonic, potentiometer, servo, and buzzer hardware) and a multi-node Python simulator. No physical microcontrollers or sensors are required!
 

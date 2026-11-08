@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 flood-ews Node Telemetry Simulator
-Simulates 6 ESP32 drainage sensor nodes across Hyderabad Musi River flashpoints.
+Simulates 6 ESP32 drainage sensor nodes across Tirupati Swarnamukhi basin and foothill flashpoints.
 Supports continuous simulation and scripted scenarios (storm, normal, watch, critical).
 """
 
@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger("simulate_nodes")
 
 # ============================================================================
-# NODE DEFINITIONS (Hyderabad Musi River Basin)
+# NODE DEFINITIONS (Tirupati Swarnamukhi Basin & Seshachalam Foothills)
 # ============================================================================
 @dataclass
 class SimulatedNode:
@@ -49,12 +49,12 @@ class SimulatedNode:
     last_cmd_reason: str = ""
 
 NODES: List[SimulatedNode] = [
-    SimulatedNode("drain-01", "Moosarambagh Bridge", 17.3705, 78.5080, "Amberpet", 200.0, 180.0, depth_cm=35.0),
-    SimulatedNode("drain-02", "Chaderghat Causeway", 17.3789, 78.4902, "Malakpet", 220.0, 200.0, depth_cm=40.0),
-    SimulatedNode("drain-03", "Amberpet Nallah", 17.3912, 78.5201, "Amberpet", 180.0, 150.0, depth_cm=28.0),
-    SimulatedNode("drain-04", "Afzalgunj Siphon", 17.3734, 78.4776, "Charminar", 210.0, 190.0, depth_cm=32.0),
-    SimulatedNode("drain-05", "Purana Pul Culvert", 17.3621, 78.4590, "Goshamahal", 190.0, 160.0, depth_cm=26.0),
-    SimulatedNode("drain-06", "Malakpet Underpass", 17.3750, 78.4985, "Malakpet", 230.0, 210.0, depth_cm=45.0),
+    SimulatedNode("drain-01", "Kapilatheertham Nallah", 13.6508, 79.4215, "Alipiri", 200.0, 180.0, depth_cm=35.0),
+    SimulatedNode("drain-02", "Leela Mahal Culvert", 13.6370, 79.4285, "Korlagunta", 220.0, 200.0, depth_cm=40.0),
+    SimulatedNode("drain-03", "Railway Underbridge (West)", 13.6255, 79.4205, "Tata Nagar", 180.0, 150.0, depth_cm=28.0),
+    SimulatedNode("drain-04", "Korlagunta Storm Canal", 13.6330, 79.4350, "Korlagunta", 210.0, 190.0, depth_cm=32.0),
+    SimulatedNode("drain-05", "Alipiri Footpath Channel", 13.6450, 79.4070, "Alipiri", 190.0, 160.0, depth_cm=26.0),
+    SimulatedNode("drain-06", "Tiruchanur Swarnamukhi Causeway", 13.6095, 79.4505, "Tiruchanur", 230.0, 210.0, depth_cm=45.0),
 ]
 
 node_map: Dict[str, SimulatedNode] = {n.id: n for n in NODES}

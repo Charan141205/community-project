@@ -1,6 +1,6 @@
 """
 Weather API Router.
-Provides current precipitation readings and 6-hour predictive forecasts for Hyderabad.
+Provides current precipitation readings and 6-hour predictive forecasts for Tirupati.
 """
 
 from fastapi import APIRouter, Query

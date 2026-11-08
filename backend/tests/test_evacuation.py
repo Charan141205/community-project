@@ -9,22 +9,22 @@ from backend.app.evacuation import EvacuationRouter, haversine_distance_m
 
 
 def test_haversine_distance():
-    # Distance between Moosarambagh (17.3705, 78.5080) and Chaderghat (17.3789, 78.4902)
-    dist = haversine_distance_m(17.3705, 78.5080, 17.3789, 78.4902)
-    # Approx 2.1 km
-    assert 1800 < dist < 2400
+    # Distance between Kapilatheertham (13.6508, 79.4215) and Leela Mahal (13.6370, 79.4285)
+    dist = haversine_distance_m(13.6508, 79.4215, 13.6370, 79.4285)
+    # Approx 1.7 km
+    assert 1500 < dist < 1900
 
 
 def test_evacuation_routing_normal():
     router = EvacuationRouter()
 
     shelters = [
-        {"id": "s1", "name": "Nimboliadda Community Hall", "lat": 17.3820, "lon": 78.4950, "capacity": 200, "current_occupancy": 20},
-        {"id": "s2", "name": "Amberpet Indoor Stadium", "lat": 17.3980, "lon": 78.5150, "capacity": 400, "current_occupancy": 50},
+        {"id": "s1", "name": "Mahati Community Relief Centre", "lat": 13.6295, "lon": 79.4200, "capacity": 350, "current_occupancy": 15},
+        {"id": "s2", "name": "SV High School & Relief Camp", "lat": 13.6410, "lon": 79.4120, "capacity": 450, "current_occupancy": 42},
     ]
 
-    # Origin at Moosarambagh
-    origin_lat, origin_lon = 17.3710, 78.5085
+    # Origin near Kapilatheertham
+    origin_lat, origin_lon = 13.6500, 79.4210
 
     result = router.route_to_nearest_shelter(
         origin_lat=origin_lat,
@@ -45,15 +45,15 @@ def test_evacuation_avoids_critical_flood_nodes():
     router = EvacuationRouter()
 
     shelters = [
-        {"id": "s1", "name": "Chaderghat School", "lat": 17.3760, "lon": 78.4870, "capacity": 300, "current_occupancy": 10},
+        {"id": "s1", "name": "Mahati Relief Centre", "lat": 13.6295, "lon": 79.4200, "capacity": 300, "current_occupancy": 10},
     ]
 
-    # Road passing near Malakpet (17.3750, 78.4985)
+    # Road passing near Railway Underbridge (13.6255, 79.4205)
     flooded_nodes = [
-        {"id": "drain-06", "name": "Malakpet Underpass", "lat": 17.3750, "lon": 78.4985, "risk_level": "CRITICAL"},
+        {"id": "drain-03", "name": "Railway Underbridge (West)", "lat": 13.6255, "lon": 79.4205, "risk_level": "CRITICAL"},
     ]
 
     dynamic_graph, avoided_ids = router.build_dynamic_graph(flooded_nodes, avoidance_radius_m=300.0)
 
-    # Verify that drain-06 was detected and avoided
-    assert "drain-06" in avoided_ids
+    # Verify that drain-03 was detected and avoided
+    assert "drain-03" in avoided_ids

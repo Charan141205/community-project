@@ -13,29 +13,29 @@ from backend.app.config import settings
 
 logger = logging.getLogger("flood_db")
 
-# In-memory store fallback & fast cache
+# In-memory store fallback & fast cache (Tirupati Region)
 IN_MEMORY_NODES: Dict[str, Dict[str, Any]] = {
-    "drain-01": {"id": "drain-01", "name": "Moosarambagh Bridge", "lat": 17.3705, "lon": 78.5080, "ward": "Amberpet", "mount_height_cm": 200.0, "capacity_cm": 180.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
-    "drain-02": {"id": "drain-02", "name": "Chaderghat Causeway", "lat": 17.3789, "lon": 78.4902, "ward": "Malakpet", "mount_height_cm": 220.0, "capacity_cm": 200.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
-    "drain-03": {"id": "drain-03", "name": "Amberpet Nallah", "lat": 17.3912, "lon": 78.5201, "ward": "Amberpet", "mount_height_cm": 180.0, "capacity_cm": 150.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
-    "drain-04": {"id": "drain-04", "name": "Afzalgunj Siphon", "lat": 17.3734, "lon": 78.4776, "ward": "Charminar", "mount_height_cm": 210.0, "capacity_cm": 190.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
-    "drain-05": {"id": "drain-05", "name": "Purana Pul Culvert", "lat": 17.3621, "lon": 78.4590, "ward": "Goshamahal", "mount_height_cm": 190.0, "capacity_cm": 160.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
-    "drain-06": {"id": "drain-06", "name": "Malakpet Underpass", "lat": 17.3750, "lon": 78.4985, "ward": "Malakpet", "mount_height_cm": 230.0, "capacity_cm": 210.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-01": {"id": "drain-01", "name": "Kapilatheertham Nallah", "lat": 13.6508, "lon": 79.4215, "ward": "Alipiri", "mount_height_cm": 200.0, "capacity_cm": 180.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-02": {"id": "drain-02", "name": "Leela Mahal Culvert", "lat": 13.6370, "lon": 79.4285, "ward": "Korlagunta", "mount_height_cm": 220.0, "capacity_cm": 200.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-03": {"id": "drain-03", "name": "Railway Underbridge (West)", "lat": 13.6255, "lon": 79.4205, "ward": "Tata Nagar", "mount_height_cm": 180.0, "capacity_cm": 150.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-04": {"id": "drain-04", "name": "Korlagunta Storm Canal", "lat": 13.6330, "lon": 79.4350, "ward": "Korlagunta", "mount_height_cm": 210.0, "capacity_cm": 190.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-05": {"id": "drain-05", "name": "Alipiri Footpath Channel", "lat": 13.6450, "lon": 79.4070, "ward": "Alipiri", "mount_height_cm": 190.0, "capacity_cm": 160.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
+    "drain-06": {"id": "drain-06", "name": "Tiruchanur Swarnamukhi Causeway", "lat": 13.6095, "lon": 79.4505, "ward": "Tiruchanur", "mount_height_cm": 230.0, "capacity_cm": 210.0, "status": "online", "current_gate_deg": 0, "last_seen": datetime.now(timezone.utc)},
 }
 
 IN_MEMORY_SHELTERS: List[Dict[str, Any]] = [
-    {"id": "shelter-01", "name": "Amberpet Indoor Stadium Relief Camp", "lat": 17.3980, "lon": 78.5150, "capacity": 450, "current_occupancy": 42, "ward": "Amberpet", "contact_phone": "+91-40-27401122"},
-    {"id": "shelter-02", "name": "Nimboliadda Community Hall", "lat": 17.3820, "lon": 78.4950, "capacity": 250, "current_occupancy": 15, "ward": "Malakpet", "contact_phone": "+91-40-24552233"},
-    {"id": "shelter-03", "name": "Chaderghat Govt High School Shelter", "lat": 17.3760, "lon": 78.4870, "capacity": 300, "current_occupancy": 20, "ward": "Malakpet", "contact_phone": "+91-40-24754455"},
-    {"id": "shelter-04", "name": "City Model High School & Relief Centre", "lat": 17.3680, "lon": 78.4680, "capacity": 350, "current_occupancy": 30, "ward": "Charminar", "contact_phone": "+91-40-24526677"},
+    {"id": "shelter-01", "name": "SV High School & Relief Camp", "lat": 13.6410, "lon": 79.4120, "capacity": 450, "current_occupancy": 42, "ward": "Alipiri", "contact_phone": "+91-877-2287111"},
+    {"id": "shelter-02", "name": "Mahati Community Relief Centre", "lat": 13.6295, "lon": 79.4200, "capacity": 350, "current_occupancy": 15, "ward": "Tata Nagar", "contact_phone": "+91-877-2264222"},
+    {"id": "shelter-03", "name": "Municipal High School Korlagunta", "lat": 13.6350, "lon": 79.4310, "capacity": 300, "current_occupancy": 20, "ward": "Korlagunta", "contact_phone": "+91-877-2245333"},
+    {"id": "shelter-04", "name": "SV University Indoor Stadium Relief Camp", "lat": 13.6320, "lon": 79.4005, "capacity": 500, "current_occupancy": 30, "ward": "SVU Campus", "contact_phone": "+91-877-2248444"},
 ]
 
 IN_MEMORY_SUBSCRIBERS: List[Dict[str, Any]] = [
-    {"id": 1, "phone": "+919876543210", "name": "Ramesh Kumar", "ward": "Amberpet", "language": "te", "opted_in": True, "created_at": datetime.now(timezone.utc)},
-    {"id": 2, "phone": "+919876543211", "name": "Sunita Sharma", "ward": "Malakpet", "language": "hi", "opted_in": True, "created_at": datetime.now(timezone.utc)},
-    {"id": 3, "phone": "+919876543212", "name": "Mohammed Abdul", "ward": "Charminar", "language": "en", "opted_in": True, "created_at": datetime.now(timezone.utc)},
-    {"id": 4, "phone": "+919876543213", "name": "Lakshmi Reddy", "ward": "Amberpet", "language": "te", "opted_in": True, "created_at": datetime.now(timezone.utc)},
-    {"id": 5, "phone": "+919876543214", "name": "Vikram Singh", "ward": "Goshamahal", "language": "hi", "opted_in": True, "created_at": datetime.now(timezone.utc)},
+    {"id": 1, "phone": "+919876543210", "name": "K. Venkataswamy", "ward": "Alipiri", "language": "te", "opted_in": True, "created_at": datetime.now(timezone.utc)},
+    {"id": 2, "phone": "+919876543211", "name": "Sujata Sharma", "ward": "Korlagunta", "language": "hi", "opted_in": True, "created_at": datetime.now(timezone.utc)},
+    {"id": 3, "phone": "+919876543212", "name": "Dr. K. Srinivas", "ward": "Tata Nagar", "language": "en", "opted_in": True, "created_at": datetime.now(timezone.utc)},
+    {"id": 4, "phone": "+919876543213", "name": "Lakshmi Devi", "ward": "Alipiri", "language": "te", "opted_in": True, "created_at": datetime.now(timezone.utc)},
+    {"id": 5, "phone": "+919876543214", "name": "Rajesh Varma", "ward": "Tiruchanur", "language": "hi", "opted_in": True, "created_at": datetime.now(timezone.utc)},
 ]
 
 IN_MEMORY_READINGS: List[Dict[str, Any]] = []

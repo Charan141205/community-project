@@ -1,7 +1,7 @@
 """
 Predictive Weather Forecasting Engine.
 Queries Open-Meteo meteorological API for hourly precipitation forecasts,
-providing pre-emptive flood watch triggers for Hyderabad's Musi River catchment basin.
+providing pre-emptive flood watch triggers for Tirupati's Swarnamukhi River & Seshachalam hill catchment basin.
 """
 
 from datetime import datetime, timezone
