@@ -131,16 +131,12 @@ void reconnectMQTT() {
 // ============================================================================
 void setup() {
   Serial.begin(115200);
+  delay(500);
 
-  // Configure Hardware Timers for ESP32 Servo Library
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
-
-  gateServo.setPeriodHertz(50);
-  gateServo.attach(SERVO_PIN, 500, 2400);
-  gateServo.write(0); // Default Open
+  Serial.println(F("\n=============================================="));
+  Serial.println(F("   flood-ews ESP32 Node Booting... "));
+  Serial.printf(F("   Node: %s | Servo: GPIO %d | Trig: GPIO %d | Echo: GPIO %d\n"), node_id, SERVO_PIN, TRIG_PIN, ECHO_PIN);
+  Serial.println(F("=============================================="));
 
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
@@ -153,15 +149,18 @@ void setup() {
   digitalWrite(LED_RED_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
 
+  gateServo.setPeriodHertz(50);
+  gateServo.attach(SERVO_PIN, 500, 2400);
+  gateServo.write(0); // Default Open
+
+  Serial.println(F("[SERVO] Gate attached to GPIO 13. Default angle: 0 deg (OPEN)."));
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqttCallback);
 
-  Serial.println(F("\n=============================================="));
-  Serial.println(F("   flood-ews ESP32 Node Initialized Successfully "));
-  Serial.printf(F("   Node: %s | Servo Pin: %d | Trig: %d | Echo: %d\n"), node_id, SERVO_PIN, TRIG_PIN, ECHO_PIN);
-  Serial.println(F("=============================================="));
+  Serial.println(F("[SYSTEM] Ready! Listening to sensors and MQTT..."));
 }
 
 // ============================================================================
