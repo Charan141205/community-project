@@ -1,9 +1,11 @@
 """
 Multilingual Alert Dispatcher & Notification Engine.
-Supports English, Telugu, and Hindi with per-node 15-minute rate limiting and provider abstraction.
+Supports Live Twilio SMS & WhatsApp Business API, Mock Provider,
+and per-node 15-minute rate limiting with English, Telugu, and Hindi localization.
 """
 
 import abc
+import asyncio
 import logging
 import time
 from typing import Dict, List, Optional
@@ -15,12 +17,12 @@ logger = logging.getLogger("flood_alerts")
 class AlertProvider(abc.ABC):
     @abc.abstractmethod
     async def send_message(self, recipient_phone: str, message: str, channel: str = "sms") -> bool:
-        """Send notification via provider channel."""
+        """Send notification via provider channel ('sms' or 'whatsapp')."""
         pass
 
 
 class MockProvider(AlertProvider):
-    """Logs alerts to console and records them into database."""
+    """Logs alerts to console and records them into database (Default for dev/testing)."""
 
     async def send_message(self, recipient_phone: str, message: str, channel: str = "sms") -> bool:
         logger.info(f"📢 [MOCK {channel.upper()}] To: {recipient_phone} | Content: {message}")
@@ -28,34 +30,91 @@ class MockProvider(AlertProvider):
 
 
 class TwilioProvider(AlertProvider):
-    """Dispatches real SMS or WhatsApp alerts via Twilio API."""
+    """
+    Live production provider for Twilio SMS and WhatsApp notifications.
+    Supports official Twilio Client with async executor and direct async fallback.
+    """
 
-    def __init__(self, account_sid: str, auth_token: str, from_phone: str):
+    def __init__(
+        self,
+        account_sid: str,
+        auth_token: str,
+        from_sms_phone: str,
+        from_whatsapp_phone: str = "",
+    ):
         self.account_sid = account_sid
         self.auth_token = auth_token
-        self.from_phone = from_phone
+        self.from_sms_phone = from_sms_phone
+        self.from_whatsapp_phone = from_whatsapp_phone or from_sms_phone
+
+        self.client = None
+        if self.account_sid and self.auth_token:
+            try:
+                from twilio.rest import Client
+                self.client = Client(self.account_sid, self.auth_token)
+                logger.info("Initialized live Twilio Client.")
+            except ImportError:
+                logger.warning("Twilio SDK not installed, using direct async HTTP.")
 
     async def send_message(self, recipient_phone: str, message: str, channel: str = "sms") -> bool:
         if not self.account_sid or not self.auth_token:
-            logger.warning("Twilio credentials not configured, skipping live dispatch.")
+            logger.warning("Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.")
             return False
 
+        is_whatsapp = (channel.lower() == "whatsapp")
+
+        # Format E.164 numbers
+        if is_whatsapp:
+            from_addr = (
+                self.from_whatsapp_phone
+                if self.from_whatsapp_phone.startswith("whatsapp:")
+                else f"whatsapp:{self.from_whatsapp_phone}"
+            )
+            to_addr = (
+                recipient_phone
+                if recipient_phone.startswith("whatsapp:")
+                else f"whatsapp:{recipient_phone}"
+            )
+        else:
+            from_addr = self.from_sms_phone
+            to_addr = recipient_phone
+
+        # 1. Use Twilio Python SDK in async thread pool if available
+        if self.client:
+            try:
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: self.client.messages.create(
+                        body=message,
+                        from_=from_addr,
+                        to=to_addr,
+                    ),
+                )
+                logger.info(f"✅ Twilio {channel.upper()} dispatched! SID: {result.sid} to {to_addr}")
+                return True
+            except Exception as e:
+                logger.error(f"❌ Twilio SDK dispatch failed: {e}")
+                # Fall through to direct HTTP fallback
+
+        # 2. Direct HTTP Basic Auth Fallback (via httpx)
         try:
             import httpx
-            from_number = f"whatsapp:{self.from_phone}" if channel == "whatsapp" else self.from_phone
-            to_number = f"whatsapp:{recipient_phone}" if channel == "whatsapp" else recipient_phone
-
             url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                resp = await http_client.post(
                     url,
-                    data={"From": from_number, "To": to_number, "Body": message},
+                    data={"From": from_addr, "To": to_addr, "Body": message},
                     auth=(self.account_sid, self.auth_token),
-                    timeout=10.0,
                 )
-                return resp.status_code in [200, 201]
-        except Exception as e:
-            logger.error(f"Failed to dispatch Twilio alert to {recipient_phone}: {e}")
+                if resp.status_code in [200, 201]:
+                    logger.info(f"✅ Twilio direct HTTP {channel.upper()} sent to {to_addr}")
+                    return True
+                else:
+                    logger.error(f"❌ Twilio HTTP Error ({resp.status_code}): {resp.text}")
+                    return False
+        except Exception as ex:
+            logger.error(f"❌ Twilio direct HTTP dispatch failed: {ex}")
             return False
 
 
@@ -126,10 +185,20 @@ class AlertManager:
         self.last_alert_time[node_id] = now
 
 
+def create_default_alert_manager() -> AlertManager:
+    """Factory to instantiate the appropriate provider based on settings."""
+    if not settings.MOCK_ALERTS and settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN:
+        provider = TwilioProvider(
+            account_sid=settings.TWILIO_ACCOUNT_SID,
+            auth_token=settings.TWILIO_AUTH_TOKEN,
+            from_sms_phone=settings.TWILIO_PHONE_NUMBER,
+            from_whatsapp_phone=settings.TWILIO_WHATSAPP_NUMBER,
+        )
+    else:
+        provider = MockProvider()
+
+    return AlertManager(provider=provider, cooldown_seconds=settings.ALERT_COOLDOWN_SECONDS)
+
+
 # Global Alert Manager Singleton
-alert_manager = AlertManager(
-    provider=MockProvider() if settings.MOCK_ALERTS else TwilioProvider(
-        settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN, settings.TWILIO_PHONE_NUMBER
-    ),
-    cooldown_seconds=settings.ALERT_COOLDOWN_SECONDS,
-)
+alert_manager = create_default_alert_manager()

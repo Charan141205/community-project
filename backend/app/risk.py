@@ -1,6 +1,7 @@
 """
 Risk Assessment Engine for flood-ews.
-Pure functional risk evaluations, rise-rate tracking, and hysteresis state management.
+Pure functional risk evaluations, rise-rate tracking, predictive meteorological triggers,
+and asymmetric hysteresis state management.
 """
 
 from collections import deque
@@ -26,7 +27,12 @@ def calculate_ratio(depth_cm: float, capacity_cm: float) -> float:
     return max(0.0, depth_cm / capacity_cm)
 
 
-def compute_rise_rate(history: List[Tuple[float, float]], current_ts: float, current_depth: float, window_seconds: float = 180.0) -> float:
+def compute_rise_rate(
+    history: List[Tuple[float, float]],
+    current_ts: float,
+    current_depth: float,
+    window_seconds: float = 180.0,
+) -> float:
     """
     Compute rate of rise in cm/min over the past `window_seconds` (default 3 minutes).
     `history` is a list of (timestamp_seconds, depth_cm).
@@ -60,23 +66,28 @@ def compute_rise_rate(history: List[Tuple[float, float]], current_ts: float, cur
     return round(rate, 2)
 
 
-def evaluate_raw_risk(ratio: float, rate_cm_min: float, rain_mm_h: float) -> RiskLevel:
+def evaluate_raw_risk(
+    ratio: float,
+    rate_cm_min: float,
+    rain_mm_h: float,
+    forecast_rain_1h_mm_h: float = 0.0,
+) -> RiskLevel:
     """
     Evaluate instantaneous flood risk level without hysteresis.
 
     Thresholds:
     - CRITICAL: ratio >= 85%
-    - WARNING:  70% <= ratio < 85% OR (rain > 30 mm/h and rising rate > 0)
-    - WATCH:    50% <= ratio < 70% OR rate > 5 cm/min
+    - WARNING:  70% <= ratio < 85% OR (rain > 30 mm/h and rising rate > 0) OR (severe forecast > 65 mm/h and ratio >= 40%)
+    - WATCH:    50% <= ratio < 70% OR rate > 5 cm/min OR forecast_rain_1h >= 40 mm/h (Predictive Pre-emptive Watch)
     - NORMAL:   ratio < 50%
     """
     if ratio >= 0.85:
         return RiskLevel.CRITICAL
 
-    if ratio >= 0.70 or (rain_mm_h > 30.0 and rate_cm_min > 0.0):
+    if ratio >= 0.70 or (rain_mm_h > 30.0 and rate_cm_min > 0.0) or (forecast_rain_1h_mm_h >= 65.0 and ratio >= 0.40):
         return RiskLevel.WARNING
 
-    if ratio >= 0.50 or rate_cm_min > 5.0:
+    if ratio >= 0.50 or rate_cm_min > 5.0 or forecast_rain_1h_mm_h >= 40.0:
         return RiskLevel.WATCH
 
     return RiskLevel.NORMAL
@@ -85,7 +96,7 @@ def evaluate_raw_risk(ratio: float, rate_cm_min: float, rain_mm_h: float) -> Ris
 class NodeRiskTracker:
     """
     Tracks stateful telemetry history and applies asymmetric hysteresis per node:
-    - Immediate escalation on elevated risk.
+    - Immediate escalation on elevated risk (physical or pre-emptive forecast).
     - Requires 3 consecutive lower readings before de-escalating.
     """
 
@@ -104,6 +115,7 @@ class NodeRiskTracker:
         timestamp: float,
         depth_cm: float,
         rain_mm_h: float,
+        forecast_rain_1h_mm_h: float = 0.0,
     ) -> Tuple[RiskLevel, float, float, bool]:
         """
         Process a new reading for this node.
@@ -116,10 +128,9 @@ class NodeRiskTracker:
         # Append to time-series history
         self.history.append((timestamp, depth_cm))
 
-        # Evaluate raw instantaneous level
-        raw_level = evaluate_raw_risk(ratio, rate_cm_min, rain_mm_h)
+        # Evaluate raw instantaneous level with predictive forecast trigger
+        raw_level = evaluate_raw_risk(ratio, rate_cm_min, rain_mm_h, forecast_rain_1h_mm_h)
 
-        previous_level = self.current_level
         did_escalate = False
 
         if raw_level > self.current_level:

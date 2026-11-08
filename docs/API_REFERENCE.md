@@ -18,7 +18,30 @@ Returns the operational health of backend services, database connection status, 
   "environment": "development",
   "timestamp": "2026-11-08T05:09:43.532329Z",
   "database": "connected",
-  "mqtt_broker": "connected"
+  "mqtt_broker": "connected",
+  "predictive_weather": "enabled"
+}
+```
+
+---
+
+### `GET /api/weather/forecast?refresh=false`
+Retrieves live 6-hour precipitation forecasts for the Hyderabad catchment basin from Open-Meteo API.
+
+**Response (200 OK):**
+```json
+{
+  "source": "Open-Meteo Meteorological Service",
+  "latitude": 17.3753,
+  "longitude": 78.4900,
+  "fetched_at": "2026-11-08T06:12:00Z",
+  "current_precipitation_mm_h": 12.4,
+  "max_forecast_3h_mm_h": 46.2,
+  "storm_inbound": true,
+  "forecast_timeline": [
+    { "time": "2026-11-08T06:00", "precipitation_mm_h": 12.4 },
+    { "time": "2026-11-08T07:00", "precipitation_mm_h": 46.2 }
+  ]
 }
 ```
 

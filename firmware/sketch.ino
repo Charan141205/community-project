@@ -1,23 +1,36 @@
 /**
  * flood-ews: Smart Community Flood & Urban Drainage Early Warning System
- * Node Firmware (ESP32 / Wokwi)
+ * Production ESP32 Firmware with Dual Wokwi/Hardware Support & ESP-NOW Mesh Fallback
  *
  * SENSORS & ACTUATORS:
  * - HC-SR04 Ultrasonic Distance Sensor: Water level in drain channel
- * - Potentiometer (ADC GPIO34): Simulated Rain Gauge (0.0 to 100.0 mm/h)
+ * - Potentiometer / Tipping Bucket (ADC GPIO34): Precipitation rate (0.0 to 100.0 mm/h)
  * - Micro Servo (GPIO19): Floodgate Actuator (0 deg = FULLY OPEN, 90 deg = FULLY CLOSED)
  * - Green LED (GPIO22): System/Connectivity Status (MQTT Online)
  * - Red LED (GPIO21): Warning/Critical Flood Indicator
  * - Buzzer (GPIO23): Local Autonomous Emergency Siren
+ *
+ * RESILIENCE FEATURES:
+ * 1. 5-sample median ultrasonic noise filter
+ * 2. Adaptive telemetry cadence (10s normal / 2s rapid flood alert)
+ * 3. Local Autonomy: Failsafe gate closure & siren if disconnected & depth > 85%
+ * 4. ESP-NOW Hardware Mesh Fallback: Relays telemetry peer-to-peer if Wi-Fi drops
  */
 
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
 
 // ============================================================================
-// NODE PRESET SELECTION (Change SELECTED_NODE to 1, 2, or 3 to test different nodes)
+// ENVIRONMENT SELECTOR: Set to true for Wokwi virtual simulation, false for Physical Hardware
+// ============================================================================
+#define USE_WOKWI_SIMULATION true
+
+// ============================================================================
+// NODE PRESET SELECTION (Change SELECTED_NODE to 1, 2, or 3)
 // ============================================================================
 #define SELECTED_NODE 1
 
@@ -44,7 +57,7 @@
 #endif
 
 // ============================================================================
-// HARDWARE PIN ASSIGNMENTS
+// HARDWARE PIN ASSIGNMENTS (Customizable per physical shield layout)
 // ============================================================================
 const int PIN_TRIG       = 5;
 const int PIN_ECHO       = 18;
@@ -57,56 +70,122 @@ const int PIN_BUZZER     = 23;
 // ============================================================================
 // NETWORK & MQTT CONFIGURATION
 // ============================================================================
-const char* WIFI_SSID     = "Wokwi-GUEST";
-const char* WIFI_PASSWORD = "";
+#if USE_WOKWI_SIMULATION
+  const char* WIFI_SSID     = "Wokwi-GUEST";
+  const char* WIFI_PASSWORD = "";
+  const char* MQTT_BROKER   = "broker.hivemq.com";
+  const int   MQTT_PORT     = 1883;
+  const char* MQTT_USER     = "";
+  const char* MQTT_PASSWORD = "";
+#else
+  // Production Hardware Credentials (Set your local/production network details)
+  const char* WIFI_SSID     = "PROD_SMART_CITY_IOT";
+  const char* WIFI_PASSWORD = "StrongSecurePassword123";
+  const char* MQTT_BROKER   = "mqtt.yourdomain.com"; // or AWS IoT / HiveMQ Cloud
+  const int   MQTT_PORT     = 1883;
+  const char* MQTT_USER     = "flood_operator";
+  const char* MQTT_PASSWORD = "MqttOperatorSecret!";
+#endif
 
-// Default public HiveMQ broker (for Wokwi simulation) or configurable local broker
-const char* MQTT_BROKER   = "broker.hivemq.com";
-const int   MQTT_PORT     = 1883;
-
-// MQTT Topics (derived from NODE_ID)
+// MQTT Topics
 char topicTelemetry[64];
 char topicStatus[64];
 char topicCommand[64];
 
 // ============================================================================
-// GLOBAL OBJECTS & STATE VARIABLES
+// ESP-NOW MESH PEER-TO-PEER DATA STRUCTURE
+// ============================================================================
+typedef struct __attribute__((packed)) {
+  char node_id[16];
+  uint32_t ts;
+  float depth_cm;
+  float rain_mm_h;
+  uint8_t gate_deg;
+  int8_t rssi;
+} FloodMeshPacket;
+
+// Broadcast MAC address (FF:FF:FF:FF:FF:FF)
+uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+bool isMeshActive = false;
+
+// ============================================================================
+// GLOBAL OBJECTS & STATE
 // ============================================================================
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 Servo floodgateServo;
 
-// Current state
 int currentGateAngle = 0;        // 0 = Open, 90 = Closed
 float lastDepthCm = 0.0;
 float lastRainRate = 0.0;
 bool isCloudConnected = false;
 bool isLocalAutonomyActive = false;
 
-// Timing (Non-blocking state machine)
 unsigned long lastTelemetryTime = 0;
 unsigned long lastReconnectAttempt = 0;
 unsigned long lastBuzzerToggle = 0;
+unsigned long lastMeshBeaconTime = 0;
 bool buzzerState = false;
 
 const unsigned long NORMAL_INTERVAL_MS = 10000;   // 10s normal cadence
 const unsigned long ELEVATED_INTERVAL_MS = 2000;  // 2s rapid cadence when depth > 70%
 unsigned long currentTelemetryInterval = NORMAL_INTERVAL_MS;
 
-// Exponential reconnect backoff
 unsigned long reconnectDelayMs = 2000;
 const unsigned long MAX_RECONNECT_DELAY_MS = 30000;
+unsigned long bootUnixTimestamp = 1731060000;
 
-// Base timestamp tracking for simulated unix time
-unsigned long bootUnixTimestamp = 1731060000; // Simulated epoch baseline
+// ============================================================================
+// ESP-NOW MESH RELAY CALLBACK
+// ============================================================================
+void onDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
+  if (len == sizeof(FloodMeshPacket)) {
+    FloodMeshPacket packet;
+    memcpy(&packet, incomingData, sizeof(packet));
+
+    Serial.print(F("[ESP-NOW MESH] Received relay packet from "));
+    Serial.println(packet.node_id);
+
+    // If this node has active Wi-Fi and MQTT, relay the neighbor's packet to cloud!
+    if (mqttClient.connected()) {
+      StaticJsonDocument<256> doc;
+      doc["node"]        = packet.node_id;
+      doc["ts"]          = packet.ts;
+      doc["depth_cm"]    = serialized(String(packet.depth_cm, 1));
+      doc["rain_mm_h"]   = serialized(String(packet.rain_mm_h, 1));
+      doc["gate_deg"]    = packet.gate_deg;
+      doc["rssi"]        = packet.rssi;
+      doc["mesh_relayed"]= true;
+
+      char buffer[256];
+      serializeJson(doc, buffer);
+      char relayTopic[64];
+      snprintf(relayTopic, sizeof(relayTopic), "flood/v1/%s/telemetry", packet.node_id);
+      mqttClient.publish(relayTopic, buffer);
+      Serial.print(F("[MESH BRIDGE -> MQTT] Relayed: "));
+      Serial.println(buffer);
+    }
+  }
+}
+
+void initEspNowMesh() {
+  if (esp_now_init() == ESP_OK) {
+    isMeshActive = true;
+    esp_now_register_recv_cb(onDataRecv);
+
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+    esp_now_add_peer(&peerInfo);
+    Serial.println(F("[ESP-NOW MESH] Initialized peer-to-peer relay fallback."));
+  }
+}
 
 // ============================================================================
 // SENSOR FUNCTIONS
 // ============================================================================
 
-/**
- * Measure raw distance from HC-SR04 in centimeters with timeout.
- */
 float readSingleDistanceCm() {
   digitalWrite(PIN_TRIG, LOW);
   delayMicroseconds(2);
@@ -114,26 +193,21 @@ float readSingleDistanceCm() {
   delayMicroseconds(10);
   digitalWrite(PIN_TRIG, LOW);
 
-  long duration = pulseIn(PIN_ECHO, HIGH, 26000); // ~4.5m max range timeout
-  if (duration == 0) {
-    return MOUNT_HEIGHT_CM; // Default to empty channel on timeout
-  }
+  long duration = pulseIn(PIN_ECHO, HIGH, 26000); // ~4.5m timeout
+  if (duration == 0) return MOUNT_HEIGHT_CM;
   return (float)duration * 0.0343f / 2.0f;
 }
 
-/**
- * 5-sample median filter to eliminate ultrasonic echoes and surface wave noise.
- */
 float readMedianDistanceCm() {
   const int SAMPLES = 5;
   float readings[SAMPLES];
 
   for (int i = 0; i < SAMPLES; i++) {
     readings[i] = readSingleDistanceCm();
-    delay(5); // Brief acoustic decay
+    delay(5);
   }
 
-  // Simple insertion sort
+  // Insertion sort
   for (int i = 1; i < SAMPLES; i++) {
     float key = readings[i];
     int j = i - 1;
@@ -144,12 +218,9 @@ float readMedianDistanceCm() {
     readings[j + 1] = key;
   }
 
-  return readings[SAMPLES / 2]; // Return median
+  return readings[SAMPLES / 2];
 }
 
-/**
- * Read water depth in cm (Mount Height - Distance to Water Surface).
- */
 float readWaterDepthCm() {
   float distance = readMedianDistanceCm();
   float depth = MOUNT_HEIGHT_CM - distance;
@@ -158,14 +229,9 @@ float readWaterDepthCm() {
   return depth;
 }
 
-/**
- * Read simulated rain rate in mm/h from potentiometer ADC.
- */
 float readRainRateMmH() {
   int rawAdc = analogRead(PIN_RAIN_ADC);
-  // Linear scale 0-4095 -> 0.0 - 100.0 mm/h
-  float rain = (float)rawAdc / 4095.0f * 100.0f;
-  return rain;
+  return (float)rawAdc / 4095.0f * 100.0f;
 }
 
 // ============================================================================
@@ -186,24 +252,19 @@ void setGateAngle(int angle, const char* reason) {
 void updateIndicators(float depthCm, float capacityCm, bool connected) {
   float ratio = depthCm / capacityCm;
 
-  // Green LED: Connectivity state
   digitalWrite(PIN_LED_GREEN, connected ? HIGH : LOW);
 
-  // Red LED: Flood alert level
   if (ratio >= 0.85f) {
-    // Critical: Rapid blink
     digitalWrite(PIN_LED_RED, (millis() / 250) % 2 == 0 ? HIGH : LOW);
   } else if (ratio >= 0.70f) {
-    // Warning: Solid ON
     digitalWrite(PIN_LED_RED, HIGH);
   } else {
-    // Normal/Watch: OFF
     digitalWrite(PIN_LED_RED, LOW);
   }
 }
 
 // ============================================================================
-// MQTT & TELEMETRY
+// MQTT CALLBACK & TELEMETRY
 // ============================================================================
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -212,24 +273,17 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   memcpy(message, payload, length);
   message[length] = '\0';
 
-  Serial.print(F("[MQTT CMD] Received on topic "));
+  Serial.print(F("[MQTT CMD] Received on "));
   Serial.print(topic);
   Serial.print(F(": "));
   Serial.println(message);
 
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, message);
-  if (error) {
-    Serial.print(F("[MQTT CMD ERR] Deserialization failed: "));
-    Serial.println(error.c_str());
-    return;
-  }
-
-  if (doc.containsKey("gate_angle")) {
+  if (!error && doc.containsKey("gate_angle")) {
     int targetAngle = doc["gate_angle"];
     const char* reason = doc.containsKey("reason") ? doc["reason"] : "cloud_command";
     setGateAngle(targetAngle, reason);
-    // Cloud commands override local autonomy
     isLocalAutonomyActive = false;
   }
 }
@@ -254,43 +308,57 @@ void publishTelemetry(float depthCm, float rainMmH) {
   Serial.println(published ? F(" (OK)") : F(" (FAILED)"));
 }
 
+void broadcastEspNowMesh(float depthCm, float rainMmH) {
+  if (!isMeshActive) return;
+
+  FloodMeshPacket packet;
+  strncpy(packet.node_id, NODE_ID, sizeof(packet.node_id) - 1);
+  packet.ts = bootUnixTimestamp + (millis() / 1000);
+  packet.depth_cm = depthCm;
+  packet.rain_mm_h = rainMmH;
+  packet.gate_deg = (uint8_t)currentGateAngle;
+  packet.rssi = -80;
+
+  esp_now_send(broadcastAddress, (uint8_t *)&packet, sizeof(packet));
+  Serial.println(F("[ESP-NOW MESH] Broadcasted peer-to-peer packet to neighbors."));
+}
+
 bool connectMqtt() {
   char clientId[48];
   snprintf(clientId, sizeof(clientId), "esp32-flood-%s-%04X", NODE_ID, (uint16_t)random(0xFFFF));
 
-  // LWT configuration: retained "offline" to status topic with QoS 1
   const char* willTopic = topicStatus;
   const int willQos = 1;
   const bool willRetain = true;
   const char* willMessage = "offline";
 
-  Serial.print(F("[MQTT] Attempting broker connection to "));
+  Serial.print(F("[MQTT] Connecting to "));
   Serial.print(MQTT_BROKER);
   Serial.print(F(" as "));
   Serial.println(clientId);
 
-  if (mqttClient.connect(clientId, willTopic, willQos, willRetain, willMessage)) {
+  bool ok = false;
+  if (strlen(MQTT_USER) > 0) {
+    ok = mqttClient.connect(clientId, MQTT_USER, MQTT_PASSWORD, willTopic, willQos, willRetain, willMessage);
+  } else {
+    ok = mqttClient.connect(clientId, willTopic, willQos, willRetain, willMessage);
+  }
+
+  if (ok) {
     Serial.println(F("[MQTT] Connected successfully!"));
-
-    // Publish retained "online"
     mqttClient.publish(topicStatus, "online", true);
-
-    // Subscribe to node command topic
     mqttClient.subscribe(topicCommand);
-    Serial.print(F("[MQTT] Subscribed to "));
-    Serial.println(topicCommand);
-
-    reconnectDelayMs = 2000; // Reset backoff on success
+    reconnectDelayMs = 2000;
     return true;
   } else {
-    Serial.print(F("[MQTT] Connect failed, rc="));
+    Serial.print(F("[MQTT] Connect failed, state="));
     Serial.println(mqttClient.state());
     return false;
   }
 }
 
 // ============================================================================
-// SETUP & MAIN LOOP
+// SETUP & LOOP
 // ============================================================================
 
 void setup() {
@@ -298,19 +366,18 @@ void setup() {
   delay(500);
 
   Serial.println(F("\n=============================================="));
-  Serial.println(F("   flood-ews Smart Drainage Early Warning     "));
+  Serial.println(F("   flood-ews Production IoT Early Warning Node "));
   Serial.println(F("=============================================="));
   Serial.print(F("Node ID: ")); Serial.println(NODE_ID);
   Serial.print(F("Location: ")); Serial.println(LOCATION_NAME);
   Serial.print(F("Mount Height: ")); Serial.print(MOUNT_HEIGHT_CM); Serial.println(F(" cm"));
   Serial.print(F("Capacity: ")); Serial.print(CAPACITY_CM); Serial.println(F(" cm"));
+  Serial.print(F("Simulation Mode: ")); Serial.println(USE_WOKWI_SIMULATION ? F("Wokwi Virtual") : F("Physical Production"));
 
-  // Build topic strings
   snprintf(topicTelemetry, sizeof(topicTelemetry), "flood/v1/%s/telemetry", NODE_ID);
   snprintf(topicStatus, sizeof(topicStatus), "flood/v1/%s/status", NODE_ID);
   snprintf(topicCommand, sizeof(topicCommand), "flood/v1/%s/cmd", NODE_ID);
 
-  // Pin modes
   pinMode(PIN_TRIG, OUTPUT);
   pinMode(PIN_ECHO, INPUT);
   pinMode(PIN_RAIN_ADC, INPUT);
@@ -323,18 +390,17 @@ void setup() {
   digitalWrite(PIN_LED_RED, LOW);
   digitalWrite(PIN_BUZZER, LOW);
 
-  // Initialize Servo
-  floodgateServo.setPeriodHertz(50); // Standard 50Hz servo
-  floodgateServo.attach(PIN_SERVO, 500, 2400); // 500us to 2400us pulse widths
+  floodgateServo.setPeriodHertz(50);
+  floodgateServo.attach(PIN_SERVO, 500, 2400);
   setGateAngle(0, "boot_initialization");
 
-  // Connect Wi-Fi
-  Serial.print(F("[WIFI] Connecting to "));
-  Serial.println(WIFI_SSID);
+  // Initialize Wi-Fi in Station Mode
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  // MQTT Client setup
+  // Initialize ESP-NOW Mesh Fallback
+  initEspNowMesh();
+
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   mqttClient.setBufferSize(512);
@@ -345,7 +411,6 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // 1. Manage Wi-Fi & MQTT Connectivity
   bool wifiOk = (WiFi.status() == WL_CONNECTED);
   bool mqttOk = mqttClient.connected();
   isCloudConnected = wifiOk && mqttOk;
@@ -353,7 +418,7 @@ void loop() {
   if (isCloudConnected) {
     mqttClient.loop();
   } else {
-    // Non-blocking reconnect with exponential backoff
+    // Non-blocking reconnect
     if (now - lastReconnectAttempt > reconnectDelayMs) {
       lastReconnectAttempt = now;
       if (wifiOk) {
@@ -371,29 +436,31 @@ void loop() {
     }
   }
 
-  // 2. Read Sensors
+  // Read Sensors
   lastDepthCm = readWaterDepthCm();
   lastRainRate = readRainRateMmH();
   float depthRatio = lastDepthCm / CAPACITY_CM;
 
-  // 3. Adaptive Telemetry Rate: 10s normal, 2s if depth > 70% of capacity
+  // Adaptive interval: 10s normal / 2s when depth > 70%
   currentTelemetryInterval = (depthRatio > 0.70f) ? ELEVATED_INTERVAL_MS : NORMAL_INTERVAL_MS;
 
   if (now - lastTelemetryTime >= currentTelemetryInterval) {
     lastTelemetryTime = now;
     if (isCloudConnected) {
       publishTelemetry(lastDepthCm, lastRainRate);
+    } else {
+      // Wi-Fi or MQTT disconnected: Broadcast via ESP-NOW Mesh peer-to-peer!
+      broadcastEspNowMesh(lastDepthCm, lastRainRate);
     }
   }
 
-  // 4. LOCAL AUTONOMY: When disconnected from cloud & depth > 85%, close gate and sound alarm
+  // Local Autonomy Failsafe: Disconnected & depth > 85% -> auto-close gate & pulse siren
   if (!isCloudConnected && depthRatio > 0.85f) {
     if (!isLocalAutonomyActive) {
       isLocalAutonomyActive = true;
-      Serial.println(F("[AUTONOMY ALERT] Cloud disconnected & depth > 85%! Emergency gate closure."));
+      Serial.println(F("[AUTONOMY FAILSAFE] Disconnected & depth > 85%! Emergency gate closure."));
       setGateAngle(90, "local_autonomy_critical");
     }
-    // Alarm siren pulse
     if (now - lastBuzzerToggle > 200) {
       lastBuzzerToggle = now;
       buzzerState = !buzzerState;
@@ -401,18 +468,13 @@ void loop() {
     }
   } else {
     if (isLocalAutonomyActive && isCloudConnected) {
-      // Cloud reconnected, allow cloud to control
       isLocalAutonomyActive = false;
     }
-    // Turn off buzzer if not in autonomous emergency
     if (!isLocalAutonomyActive) {
       digitalWrite(PIN_BUZZER, LOW);
     }
   }
 
-  // 5. Update Status LEDs
   updateIndicators(lastDepthCm, CAPACITY_CM, isCloudConnected);
-
-  // Brief yield for RTOS tasks
   delay(10);
 }

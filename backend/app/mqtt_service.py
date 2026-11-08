@@ -1,7 +1,8 @@
 """
 MQTT Telemetry Consumer & Actuation Service for flood-ews.
-Listens to sensor telemetry, validates payloads, runs the risk engine,
-triggers automated floodgate closures, and coordinates multilingual alerts.
+Listens to sensor telemetry, validates payloads, incorporates predictive weather forecasts,
+runs the risk engine, triggers automated floodgate closures, and coordinates multilingual alerts.
+Supports production authentication (username/password) and TLS encryption.
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from backend.app.db import db
 from backend.app.risk import NodeRiskTracker, RiskLevel
 from backend.app.schemas import TelemetryPayload
 from backend.app.alerts import alert_manager
+from backend.app.weather import get_cached_forecast_rain_1h
 from backend.app.websocket_manager import ws_manager
 
 logger = logging.getLogger("flood_mqtt")
@@ -41,6 +43,21 @@ class MQTTService:
         self._loop = loop
         client_id = f"flood-backend-core-{id(self)}"
         self.client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+
+        # Configure username and password if provided in production environment
+        if settings.MQTT_USERNAME:
+            self.client.username_pw_set(settings.MQTT_USERNAME, settings.MQTT_PASSWORD)
+            logger.info("Configured MQTT client credentials.")
+
+        # Configure TLS if requested
+        if settings.MQTT_USE_TLS:
+            try:
+                import ssl
+                self.client.tls_set(cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2)
+                logger.info("Configured MQTT TLS encryption.")
+            except Exception as e:
+                logger.error(f"Failed to configure MQTT TLS: {e}")
+
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
@@ -50,7 +67,7 @@ class MQTTService:
             self.client.connect(settings.MQTT_BROKER_HOST, settings.MQTT_BROKER_PORT, keepalive=settings.MQTT_KEEPALIVE)
             self.client.loop_start()
         except Exception as e:
-            logger.warning(f"Could not connect to MQTT broker ({e}). Telemetry can also be fed via simulator/API.")
+            logger.warning(f"Could not connect to MQTT broker ({e}). Operating with local ingestion.")
 
     def stop(self):
         if self.client:
@@ -113,7 +130,6 @@ class MQTTService:
             node_id = topic_parts[2]
             try:
                 raw_json = json.loads(payload_str)
-                # Pydantic v2 validation
                 telemetry = TelemetryPayload.model_validate(raw_json)
             except Exception as val_err:
                 logger.warning(f"Rejected invalid telemetry from [{node_id}]: {val_err}")
@@ -141,12 +157,16 @@ class MQTTService:
         await db.insert_reading(reading_record)
         await db.update_node_status(node_id, "online", gate_deg=telem.gate_deg)
 
-        # Run Risk Assessment with Hysteresis
+        # Incorporate predictive weather forecast
+        forecast_rain_1h = get_cached_forecast_rain_1h()
+
+        # Run Risk Assessment with Hysteresis & Predictive Weather
         tracker = get_or_create_tracker(node_id, capacity_cm)
         risk_level, ratio, rise_rate, did_escalate = tracker.update(
             timestamp=float(telem.ts),
             depth_cm=telem.depth_cm,
             rain_mm_h=telem.rain_mm_h,
+            forecast_rain_1h_mm_h=forecast_rain_1h,
         )
 
         # Broadcast live telemetry to WebSockets
@@ -161,6 +181,7 @@ class MQTTService:
                 "capacity_cm": capacity_cm,
                 "ratio": round(ratio, 2),
                 "rain_mm_h": telem.rain_mm_h,
+                "forecast_rain_1h_mm_h": forecast_rain_1h,
                 "gate_deg": telem.gate_deg,
                 "rssi": telem.rssi,
                 "rise_rate_cm_min": rise_rate,
@@ -198,15 +219,20 @@ class MQTTService:
                         rain_mm_h=telem.rain_mm_h,
                         evac_link=evac_link,
                     )
+                    # Dispatches live via Twilio (SMS / WhatsApp) or MockProvider based on settings
                     await alert_manager.provider.send_message(phone, msg, channel="sms")
+                    if sub.get("language") in ["te", "hi"]:
+                        # Also dispatch WhatsApp for native language subscribers if enabled
+                        await alert_manager.provider.send_message(phone, msg, channel="whatsapp")
 
-                # Store single representative alert in alerts table
-                summary_msg = alert_manager.format_message("en", risk_level.label, node_name, ward, ratio, telem.rain_mm_h, evac_link)
+                summary_msg = alert_manager.format_message(
+                    "en", risk_level.label, node_name, ward, ratio, telem.rain_mm_h, evac_link
+                )
                 alert_id = await db.insert_alert(
                     node_id=node_id,
                     level=risk_level.label,
                     message=summary_msg,
-                    channel="sms",
+                    channel="multichannel",
                     recipients_count=len(subscribers),
                 )
                 await ws_manager.broadcast({

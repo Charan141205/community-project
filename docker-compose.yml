@@ -46,8 +46,16 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@timescaledb:5432/${POSTGRES_DB:-flood_ews}
       MQTT_BROKER_HOST: mosquitto
       MQTT_BROKER_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_USE_TLS: ${MQTT_USE_TLS:-false}
       OPERATOR_API_KEY: ${OPERATOR_API_KEY:-dev-operator-key-42}
-      MOCK_ALERTS: "true"
+      MOCK_ALERTS: ${MOCK_ALERTS:-true}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER:-}
+      PREDICTIVE_WEATHER_ENABLED: ${PREDICTIVE_WEATHER_ENABLED:-true}
       PUBLIC_URL: "http://localhost:3000"
     depends_on:
       timescaledb:
