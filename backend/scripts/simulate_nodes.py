@@ -209,13 +209,13 @@ def run_simulation(broker: str, port: int, scenario: str, duration: int, interva
         client.disconnect()
         logger.info("Disconnected from MQTT broker.")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="flood-ews Multi-Node Telemetry Simulator")
-    parser.add_argument("--broker", default=os.getenv("MQTT_BROKER_HOST", "broker.hivemq.com"), help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=int(os.getenv("MQTT_BROKER_PORT", 1883)), help="MQTT broker port")
-    parser.add_argument("--scenario", choices=["normal", "watch", "warning", "critical", "storm"], default="storm", help="Simulation scenario")
-    parser.add_argument("--duration", type=int, default=75, help="Simulation duration in seconds (0 for indefinite)")
-    parser.add_argument("--interval", type=float, default=10.0, help="Normal telemetry publish interval (seconds)")
-    args = parser.parse_args()
+parser = argparse.ArgumentParser(description="flood-ews Multi-Node Telemetry Simulator")
+parser.add_argument("--broker", default=os.getenv("MQTT_BROKER_HOST", "broker.hivemq.com"), help="MQTT broker host")
+parser.add_argument("--port", type=int, default=int(os.getenv("MQTT_BROKER_PORT", 1883)), help="MQTT broker port")
+parser.add_argument("--scenario", choices=["normal", "watch", "warning", "critical", "storm"], default="storm", help="Simulation scenario")
+parser.add_argument("--duration", type=int, default=75, help="Simulation duration in seconds (0 for indefinite)")
+parser.add_argument("--interval", type=float, default=10.0, help="Normal telemetry publish interval (seconds)")
 
+if __name__ == "__main__":
+    args = parser.parse_args()
     run_simulation(args.broker, args.port, args.scenario, args.duration, args.interval)

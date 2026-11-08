@@ -26,12 +26,16 @@ start "flood-ews Backend API" cmd /k "set PYTHONPATH=. && backend\.venv\Scripts\
 echo Starting Next.js Dashboard on http://localhost:3000...
 start "flood-ews Dashboard" cmd /k "cd dashboard && npm run dev"
 
+echo Starting 6-Node Real-Time Sensor Simulator...
+start "flood-ews 6-Node Simulator" cmd /k "backend\.venv\Scripts\python.exe scripts\simulate.py --scenario normal --duration 0"
+
 echo.
 echo ============================================================
-echo [SUCCESS] Both services are launching in separate windows!
+echo [SUCCESS] All 3 services are launching in separate windows!
 echo - Public Community Portal: http://localhost:3000/public
 echo - Operator Command Center: http://localhost:3000/ops
 echo - Backend OpenAPI Docs:    http://localhost:8000/docs
+echo - 6-Node IoT Telemetry:    Streaming to broker.hivemq.com
 echo ============================================================
 echo.
 pause
