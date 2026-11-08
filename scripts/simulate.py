@@ -14,4 +14,4 @@ from backend.scripts.simulate_nodes import run_simulation, parser
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    run_simulation(args.broker, args.port, args.scenario, args.duration, args.interval)
+    run_simulation(args.broker, args.port, args.scenario, args.duration, args.interval, getattr(args, "skip_node", ""))

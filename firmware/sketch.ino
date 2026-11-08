@@ -390,6 +390,12 @@ void setup() {
   digitalWrite(PIN_LED_RED, LOW);
   digitalWrite(PIN_BUZZER, LOW);
 
+  // Allocate all hardware PWM timers for ESP32Servo (Wokwi & Hardware compatibility)
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
   floodgateServo.setPeriodHertz(50);
   floodgateServo.attach(PIN_SERVO, 500, 2400);
   setGateAngle(0, "boot_initialization");
@@ -436,16 +442,46 @@ void loop() {
     }
   }
 
-  // Read Sensors
-  lastDepthCm = readWaterDepthCm();
+  // Read Sensors & Calculate Water Depth
+  float distanceCm = readMedianDistanceCm();
+  float depthCm = MOUNT_HEIGHT_CM - distanceCm;
+  if (depthCm < 0.0f) depthCm = 0.0f;
+  if (depthCm > CAPACITY_CM) depthCm = CAPACITY_CM;
+  lastDepthCm = depthCm;
   lastRainRate = readRainRateMmH();
   float depthRatio = lastDepthCm / CAPACITY_CM;
+
+  // Immediate Edge Autonomy Actuation:
+  // When depth reaches or exceeds 70% (Warning threshold), close gate to 90 deg immediately!
+  // When water recedes below 55%, automatically reopen the gate to 0 deg.
+  if (depthRatio >= 0.70f && currentGateAngle < 90) {
+    setGateAngle(90, "edge_flood_warning");
+  } else if (depthRatio < 0.55f && currentGateAngle > 0 && !isLocalAutonomyActive) {
+    setGateAngle(0, "edge_water_receded");
+  }
 
   // Adaptive interval: 10s normal / 2s when depth > 70%
   currentTelemetryInterval = (depthRatio > 0.70f) ? ELEVATED_INTERVAL_MS : NORMAL_INTERVAL_MS;
 
-  if (now - lastTelemetryTime >= currentTelemetryInterval) {
+  static float prevLoggedDepth = -99.0f;
+  bool significantChange = (fabs(lastDepthCm - prevLoggedDepth) >= 5.0f);
+
+  if ((now - lastTelemetryTime >= currentTelemetryInterval) || significantChange) {
     lastTelemetryTime = now;
+    prevLoggedDepth = lastDepthCm;
+
+    Serial.print(F("[SENSOR] Sonar Dist: "));
+    Serial.print(distanceCm, 1);
+    Serial.print(F(" cm | Water Depth: "));
+    Serial.print(lastDepthCm, 1);
+    Serial.print(F("/"));
+    Serial.print(CAPACITY_CM, 0);
+    Serial.print(F(" cm ("));
+    Serial.print(depthRatio * 100.0f, 1);
+    Serial.print(F("% fill) -> Gate: "));
+    Serial.print(currentGateAngle);
+    Serial.println(F(" deg"));
+
     if (isCloudConnected) {
       publishTelemetry(lastDepthCm, lastRainRate);
     } else {
@@ -454,7 +490,7 @@ void loop() {
     }
   }
 
-  // Local Autonomy Failsafe: Disconnected & depth > 85% -> auto-close gate & pulse siren
+  // Emergency Failsafe: When depth > 85%, pulse alarm siren if disconnected
   if (!isCloudConnected && depthRatio > 0.85f) {
     if (!isLocalAutonomyActive) {
       isLocalAutonomyActive = true;

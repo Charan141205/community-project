@@ -94,7 +94,7 @@ def on_message(client, userdata, msg):
 # ============================================================================
 # SCENARIO RUNNER
 # ============================================================================
-def run_simulation(broker: str, port: int, scenario: str, duration: int, interval: float):
+def run_simulation(broker: str, port: int, scenario: str, duration: int, interval: float, skip_node: str = ""):
     client_id = f"flood-simulator-{random.randint(1000, 9999)}"
     client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
@@ -110,6 +110,8 @@ def run_simulation(broker: str, port: int, scenario: str, duration: int, interva
 
     start_time = time.time()
     logger.info(f"Starting simulation scenario: [{scenario.upper()}] for {duration} seconds...")
+    if skip_node:
+        logger.info(f"Excluding [{skip_node}] from script simulation (reserved for Wokwi interactive board).")
 
     try:
         while True:
@@ -121,6 +123,8 @@ def run_simulation(broker: str, port: int, scenario: str, duration: int, interva
             current_ts = int(time.time())
 
             for node in NODES:
+                if skip_node and node.id == skip_node:
+                    continue
                 # Calculate dynamic depth and rain according to scenario
                 ratio = node.depth_cm / node.capacity_cm
 
@@ -215,7 +219,8 @@ parser.add_argument("--port", type=int, default=int(os.getenv("MQTT_BROKER_PORT"
 parser.add_argument("--scenario", choices=["normal", "watch", "warning", "critical", "storm"], default="storm", help="Simulation scenario")
 parser.add_argument("--duration", type=int, default=75, help="Simulation duration in seconds (0 for indefinite)")
 parser.add_argument("--interval", type=float, default=10.0, help="Normal telemetry publish interval (seconds)")
+parser.add_argument("--skip-node", default="", help="Node ID to skip (e.g. drain-01 if running Wokwi)")
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    run_simulation(args.broker, args.port, args.scenario, args.duration, args.interval)
+    run_simulation(args.broker, args.port, args.scenario, args.duration, args.interval, args.skip_node)
