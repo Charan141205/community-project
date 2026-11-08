@@ -3,7 +3,10 @@
     {
       "name": "ESP32-Wokwi",
       "includePath": [
-        "${workspaceFolder}/**"
+        "${workspaceFolder}/**",
+        "${env:USERPROFILE}/.platformio/packages/framework-arduinoespressif32/**",
+        "${env:USERPROFILE}/.platformio/packages/**",
+        "${workspaceFolder}/.pio/libdeps/**"
       ],
       "defines": [
         "ESP32",
@@ -11,7 +14,7 @@
       ],
       "cStandard": "c11",
       "cppStandard": "c++17",
-      "intelliSenseMode": "gcc-x64"
+      "intelliSenseMode": "windows-gcc-x64"
     }
   ],
   "version": 4
