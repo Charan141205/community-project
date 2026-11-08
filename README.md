@@ -12,6 +12,30 @@
 
 ---
 
+## 📍 Regional Deployment: Tirupati Swarnamukhi Basin & Seshachalam Foothills
+
+The system is calibrated for the specific hydrology and urban drainage topography of **Tirupati, Andhra Pradesh, India**, protecting urban settlements from sudden mountain runoff cascading down from the Seshachalam range into the Swarnamukhi River basin:
+
+### 🌊 Monitored Flashpoint Nodes
+| Node ID | Flashpoint Name | Ward / Area | Mount Height | Overflow Depth | Risk Focus |
+|---|---|---|---|---|---|
+| `drain-01` | **Kapilatheertham Nallah** | Alipiri | 200 cm | 180 cm | Waterfall foothill flash runoff |
+| `drain-02` | **Leela Mahal Culvert** | Korlagunta | 220 cm | 200 cm | Commercial corridor urban choke point |
+| `drain-03` | **Railway Underbridge (West)** | Tata Nagar | 180 cm | 150 cm | Underpass vehicle inundation |
+| `drain-04` | **Korlagunta Storm Canal** | Korlagunta | 210 cm | 190 cm | High-density residential storm canal |
+| `drain-05` | **Alipiri Footpath Channel** | Alipiri | 190 cm | 160 cm | Pilgrimage pedestrian transit route |
+| `drain-06` | **Tiruchanur Causeway** | Tiruchanur | 230 cm | 210 cm | Swarnamukhi river low-level bridge |
+
+### 🏥 Designated Relief Shelters
+| Shelter ID | Shelter Name | Ward / Landmark | Capacity (Beds) |
+|---|---|---|---|
+| `shelter-01` | **Sri Padmavathi Mahila Visvavidyalayam** | West Tirupati | 350 |
+| `shelter-02` | **SV High School Grounds** | Balaji Colony | 200 |
+| `shelter-03` | **TTD Central Rest House** | Old Tirupati | 500 |
+| `shelter-04` | **Shilparamam Relief Center** | Tiruchanur Road | 180 |
+
+---
+
 ## 📸 Live Dashboard Previews
 
 | Community Public Portal (`/public`) | Operator Command Center (`/ops`) |

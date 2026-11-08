@@ -20,11 +20,21 @@ const float MOUNT_HEIGHT_CM = 200.0; // Sensor mount height from channel floor
 const float MAX_DRAIN_DEPTH = 180.0; // Maximum channel overflow depth before flood
 
 // ============================================================================
-// NETWORK & MQTT CONFIGURATION
+// DEPLOYMENT MODE & NETWORK CONFIGURATION
 // ============================================================================
-const char* ssid        = "Wokwi-GUEST";
-const char* password    = "";
-const char* mqtt_server = "broker.hivemq.com";
+// Set to 1 when flashing physical hardware; 0 for Wokwi simulation
+#define USE_PHYSICAL_HARDWARE 0
+
+#if USE_PHYSICAL_HARDWARE
+  const char* ssid        = "YOUR_WIFI_SSID";         // Physical Wi-Fi network SSID
+  const char* password    = "YOUR_WIFI_PASSWORD";     // Physical Wi-Fi password
+  const char* mqtt_server = "broker.hivemq.com";       // Production or local MQTT broker IP
+#else
+  const char* ssid        = "Wokwi-GUEST";            // Wokwi Virtual Wi-Fi
+  const char* password    = "";                       // No password needed in Wokwi
+  const char* mqtt_server = "broker.hivemq.com";       // Public cloud broker
+#endif
+
 const int   mqtt_port   = 1883;
 const char* node_id     = "drain-01";
 
