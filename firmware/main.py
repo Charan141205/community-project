@@ -52,37 +52,38 @@ set_gate_angle(0)  # Start with gate open (0 deg)
 # ============================================================================
 # WI-FI & HIVEMQ MQTT CONNECTION
 # ============================================================================
-print("[WIFI] Connecting to Wokwi-GUEST...")
+print("\n[WIFI] Connecting to Wokwi-GUEST...", end="")
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect("Wokwi-GUEST", "")
 
 while not wlan.isconnected():
+    print(".", end="")
     time.sleep_ms(200)
 
-print("[WIFI] Connected! IP:", wlan.ifconfig()[0])
+print(f"\n[WIFI] Connected! IP: {wlan.ifconfig()[0]}")
 
 MQTT_BROKER = "broker.hivemq.com"
-TOPIC_TELEMETRY = "flood/v1/drain-01/telemetry"
-TOPIC_CMD = "flood/v1/drain-01/cmd"
-TOPIC_STATUS = "flood/v1/drain-01/status"
+TOPIC_TELEMETRY = b"flood/v1/drain-01/telemetry"
+TOPIC_CMD = b"flood/v1/drain-01/cmd"
+TOPIC_STATUS = b"flood/v1/drain-01/status"
 
 current_gate_angle = 0
 
 def mqtt_callback(topic, msg):
     global current_gate_angle
     try:
-        data = ujson.loads(msg.decode())
+        data = ujson.loads(msg.decode("utf-8"))
         target = data.get("gate_angle", data.get("gate_deg", -1))
         if target >= 0:
             current_gate_angle = max(0, min(90, target))
             set_gate_angle(current_gate_angle)
-            print(f"[SCADA COMMAND] Remote Gate Angle: {current_gate_angle}°")
+            print(f"[SCADA COMMAND] Remote Gate Angle: {current_gate_angle} deg")
     except Exception as e:
         print("[MQTT] Parse error:", e)
 
 print("[MQTT] Connecting to HiveMQ broker...")
-client_id = f"wokwi-drain01-{time.ticks_ms()}"
+client_id = f"wokwi-esp32-{time.ticks_ms()}"
 client = MQTTClient(client_id, MQTT_BROKER, port=1883, keepalive=60)
 client.set_callback(mqtt_callback)
 client.connect()
@@ -158,19 +159,21 @@ while True:
     if abs(dist_cm - last_distance) >= 3.0 or (now - last_publish >= 2):
         last_distance = dist_cm
         last_publish = now
-        print(f"[SENSOR] Distance: {dist_cm:.1f} cm | Depth: {water_depth_cm:.1f} cm ({fill_pct:.1f}%) -> Gate: {current_gate_angle}°")
 
-        payload = ujson.dumps({
+        payload_dict = {
             "node": NODE_ID,
             "ts": int(now),
             "depth_cm": round(water_depth_cm, 1),
             "rain_mm_h": rain_rate,
             "gate_deg": current_gate_angle,
             "rssi": -65
-        })
+        }
+        payload_bytes = ujson.dumps(payload_dict).encode("utf-8")
+
         try:
-            client.publish(TOPIC_TELEMETRY, payload)
+            client.publish(TOPIC_TELEMETRY, payload_bytes)
+            print(f"[MQTT SENT] Distance: {dist_cm:.1f} cm | Depth: {water_depth_cm:.1f} cm ({fill_pct:.1f}%) -> Gate: {current_gate_angle} deg")
         except Exception as e:
-            print("[MQTT] Publish retry:", e)
+            print("[MQTT ERROR] Publish failed:", e)
 
     time.sleep_ms(50)  # 50ms cycle for instant UI responsiveness
