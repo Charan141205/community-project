@@ -1,13 +1,12 @@
 # build_complete_mbu_report.py
 """
 Master Builder for Mohan Babu University (MBU) TESP Project Report.
-Refactored to resolve all audit issues:
-1. Two separate paragraphs for chapter titles (no string concatenation).
-2. All bullet points separated into dedicated bulleted paragraphs with clean indentation.
-3. Unabridged source code in Appendix A with real line breaks and Consolas font (no truncation).
-4. No raw file:/// URIs in the text.
-5. Exact student names, roll numbers, and supervisor Dr. N. Gireesh across all front matter and Bio-Data.
-6. Times New Roman (12pt body, 14pt chapter headings, 12pt bold section headings), 1.5 line spacing, 1-inch margins.
+Final Refactoring Pass Addressing All 5 Audit Points:
+1. Complete removal of leftover "Name of Student4" placeholder on Certificate page.
+2. Code indentation strictly preserved with xml:space="preserve" in light grey shaded boxes (Consolas 9.5pt).
+3. 4 comprehensive Bio-Data tables for all 4 project members with valid contact details.
+4. Consistent 0.5pt grey grid borders for TOC, Acronyms, Figures, and Tables.
+5. Synchronized page numbers across the 65+ page document.
 """
 
 import os
@@ -111,6 +110,21 @@ def add_page_break(before_el):
     p.add_run().add_break(WD_BREAK.PAGE)
 
 
+def style_table_borders(tbl, border_color="CCCCCC", sz="4"):
+    for row in tbl.rows:
+        for cell in row.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcBorders = parse_xml(
+                r'<w:tcBorders %s>'
+                r'<w:top w:val="single" w:sz="%s" w:space="0" w:color="%s"/>'
+                r'<w:left w:val="single" w:sz="%s" w:space="0" w:color="%s"/>'
+                r'<w:bottom w:val="single" w:sz="%s" w:space="0" w:color="%s"/>'
+                r'<w:right w:val="single" w:sz="%s" w:space="0" w:color="%s"/>'
+                r'</w:tcBorders>' % (nsdecls('w'), sz, border_color, sz, border_color, sz, border_color, sz, border_color)
+            )
+            tcPr.append(tcBorders)
+
+
 def add_table_data(doc, before_el, headers, rows_data, col_widths=None):
     tbl = doc.add_table(rows=len(rows_data) + 1, cols=len(headers))
     tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -142,19 +156,8 @@ def add_table_data(doc, before_el, headers, rows_data, col_widths=None):
             if len(p.runs) > 0:
                 set_run_font(p.runs[0], font_name="Times New Roman", size_pt=9.5, bold=False, color_rgb=(0, 0, 0))
 
-    # Apply Borders
-    for row in tbl.rows:
-        for cell in row.cells:
-            tcPr = cell._tc.get_or_add_tcPr()
-            tcBorders = parse_xml(
-                r'<w:tcBorders %s>'
-                r'<w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
-                r'<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
-                r'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
-                r'<w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
-                r'</w:tcBorders>' % nsdecls('w')
-            )
-            tcPr.append(tcBorders)
+    # Apply 0.5pt subtle grey borders
+    style_table_borders(tbl, border_color="000000", sz="4")
 
     # Set Column Widths if provided
     if col_widths:
@@ -192,8 +195,11 @@ def add_figure(before_el, img_path, fig_no, caption_text, width_inches=5.2):
     set_run_font(r_cap, font_name="Times New Roman", size_pt=10, bold=True, italic=True, color_rgb=(0, 0, 0))
 
 
-def add_full_code_file(before_el, rel_path):
-    """Inserts complete, unabridged source code with each line as its own paragraph."""
+def add_code_box(doc, before_el, rel_path):
+    """
+    Inserts complete, unabridged source code inside a light grey shaded box (5% tint)
+    with a 0.5pt border and strictly preserved 4-space indentation using xml:space="preserve".
+    """
     full_path = os.path.join(r"C:\Users\lagis\Documents\Community Project", rel_path)
     if not os.path.exists(full_path):
         add_p(before_el, f"[ERROR] Code file {rel_path} not found.")
@@ -202,22 +208,60 @@ def add_full_code_file(before_el, rel_path):
     with open(full_path, "r", encoding="utf-8", errors="replace") as f:
         code_lines = f.readlines()
 
-    for line in code_lines:
+    tbl = doc.add_table(rows=1, cols=1)
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = tbl.cell(0, 0)
+    tcPr = cell._tc.get_or_add_tcPr()
+
+    # 5% tint light gray background (#F8F9FA)
+    shd = parse_xml(r'<w:shd %s w:fill="F8F9FA"/>' % nsdecls('w'))
+    tcPr.append(shd)
+
+    # 0.5pt subtle grey border with left accent (#1B365D)
+    tcBorders = parse_xml(
+        r'<w:tcBorders %s>'
+        r'<w:top w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/>'
+        r'<w:left w:val="single" w:sz="12" w:space="0" w:color="1B365D"/>'
+        r'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/>'
+        r'<w:right w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/>'
+        r'</w:tcBorders>' % nsdecls('w')
+    )
+    tcPr.append(tcBorders)
+
+    # Cell padding
+    tcMar = parse_xml(
+        r'<w:tcMar %s>'
+        r'<w:top w:w="120" w:type="dxa"/>'
+        r'<w:bottom w:w="120" w:type="dxa"/>'
+        r'<w:left w:w="160" w:type="dxa"/>'
+        r'<w:right w:w="160" w:type="dxa"/>'
+        r'</w:tcMar>' % nsdecls('w')
+    )
+    tcPr.append(tcMar)
+
+    for i, line in enumerate(code_lines):
         line_clean = line.rstrip("\r\n")
-        p = before_el.insert_paragraph_before()
-        p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        if i == 0:
+            p = cell.paragraphs[0]
+        else:
+            p = cell.add_paragraph()
         p.paragraph_format.line_spacing = 1.0
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.left_indent = Inches(0.2)
+        p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
         r = p.add_run(line_clean if line_clean else " ")
-        set_run_font(r, font_name="Consolas", size_pt=8, bold=False, color_rgb=(30, 30, 30))
+        set_run_font(r, font_name="Consolas", size_pt=9.5, bold=False, color_rgb=(25, 25, 25))
+        t = r._element.find(qn('w:t'))
+        if t is not None:
+            t.set(qn('xml:space'), 'preserve')
 
-    # Spacer after code listing
+    # Move table before before_el
+    before_el._p.addprevious(tbl._tbl)
+
     p_sp = before_el.insert_paragraph_before()
     p_sp.paragraph_format.space_before = Pt(4)
-    p_sp.paragraph_format.space_after = Pt(6)
+    p_sp.paragraph_format.space_after = Pt(8)
 
 
 def main():
@@ -240,11 +284,8 @@ def main():
                 r.font.bold = True
 
     # 2. Update Student Names on Cover Page
-    # Find Submitted by block
-    cover_students_found = False
     for i, p in enumerate(doc.paragraphs[:30]):
         if "Submitted by" in p.text:
-            cover_students_found = True
             for j in range(1, 5):
                 idx = i + j
                 if idx < len(doc.paragraphs):
@@ -268,17 +309,25 @@ def main():
                 set_run_font(doc.paragraphs[i+3].runs[0], font_name="Times New Roman", size_pt=11)
             break
 
-    # 4. Update Certificate Page
+    # 4. FIX CERTIFICATE PAGE: Populate 4 students and REMOVE leftover Name of Student4
     for i, p in enumerate(doc.paragraphs[30:50]):
         actual_idx = 30 + i
         if "is the Bonafide work done by" in p.text:
-            for j in range(1, 5):
-                idx = actual_idx + j
+            # Lines 38, 39, 40, 41 get students 1, 2, 3, 4
+            for j in range(4):
+                idx = actual_idx + 1 + j
                 if idx < len(doc.paragraphs):
-                    st_name, st_roll = fm.STUDENTS[j-1]
+                    st_name, st_roll = fm.STUDENTS[j]
                     doc.paragraphs[idx].text = f"\t{st_name}\t-\t{st_roll}"
                     for r in doc.paragraphs[idx].runs:
                         set_run_font(r, font_name="Times New Roman", size_pt=11, bold=True)
+            # Line 42 was the leftover "Name of Student4" placeholder -> COMPLETELY CLEAR IT
+            leftover_idx = actual_idx + 5
+            if leftover_idx < len(doc.paragraphs) and "Name of Student4" in doc.paragraphs[leftover_idx].text:
+                doc.paragraphs[leftover_idx].text = ""
+                # remove any residual runs
+                for r in doc.paragraphs[leftover_idx].runs:
+                    r.text = ""
             break
 
     # Update Table 0 (Supervisor / HOD in Certificate)
@@ -301,7 +350,7 @@ def main():
     ack_st_start = None
     for i, p in enumerate(doc.paragraphs[55:70]):
         actual_idx = 55 + i
-        if "Name of Student1" in p.text:
+        if "Name of Student1" in p.text or "Lagisetty" in p.text:
             ack_st_start = actual_idx
             break
 
@@ -318,7 +367,7 @@ def main():
     decl_st_start = None
     for i, p in enumerate(doc.paragraphs[65:80]):
         actual_idx = 65 + i
-        if "Name of Student1" in p.text:
+        if "Name of Student1" in p.text or "Lagisetty" in p.text:
             decl_st_start = actual_idx
             break
 
@@ -340,7 +389,7 @@ def main():
                 set_run_font(r, font_name="Times New Roman", size_pt=12, bold=False)
             break
 
-    # 8. Populate Table 5 (Acronyms)
+    # 8. Populate Table 5 (Acronyms) with 0.5pt Grey Grid Borders
     tbl_acronyms = doc.tables[5]
     while len(tbl_acronyms.rows) > 1:
         tbl_acronyms._tbl.remove(tbl_acronyms.rows[1]._tr)
@@ -354,8 +403,9 @@ def main():
             p.paragraph_format.space_after = Pt(2)
             if len(p.runs) > 0:
                 set_run_font(p.runs[0], font_name="Times New Roman", size_pt=10)
+    style_table_borders(tbl_acronyms, border_color="CCCCCC", sz="4")
 
-    # 9. Populate Table 6 (Figures)
+    # 9. Populate Table 6 (Figures) with 0.5pt Grey Grid Borders & Right-aligned Page No
     tbl_figures = doc.tables[6]
     while len(tbl_figures.rows) > 1:
         tbl_figures._tbl.remove(tbl_figures.rows[1]._tr)
@@ -368,11 +418,17 @@ def main():
             p = cell.paragraphs[0]
             p.paragraph_format.line_spacing = 1.15
             p.paragraph_format.space_after = Pt(2)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx != 1 else WD_ALIGN_PARAGRAPH.LEFT
+            if c_idx == 0:
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            elif c_idx == 1:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            else:
+                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
             if len(p.runs) > 0:
                 set_run_font(p.runs[0], font_name="Times New Roman", size_pt=10)
+    style_table_borders(tbl_figures, border_color="CCCCCC", sz="4")
 
-    # 10. Populate Table 7 (Tables)
+    # 10. Populate Table 7 (Tables) with 0.5pt Grey Grid Borders & Right-aligned Page No
     tbl_tables = doc.tables[7]
     while len(tbl_tables.rows) > 1:
         tbl_tables._tbl.remove(tbl_tables.rows[1]._tr)
@@ -385,11 +441,17 @@ def main():
             p = cell.paragraphs[0]
             p.paragraph_format.line_spacing = 1.15
             p.paragraph_format.space_after = Pt(2)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx != 1 else WD_ALIGN_PARAGRAPH.LEFT
+            if c_idx == 0:
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            elif c_idx == 1:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            else:
+                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
             if len(p.runs) > 0:
                 set_run_font(p.runs[0], font_name="Times New Roman", size_pt=10)
+    style_table_borders(tbl_tables, border_color="CCCCCC", sz="4")
 
-    # 11. Populate Table 4 (Table of Contents)
+    # 11. Populate Table 4 (Table of Contents) with 0.5pt Grey Grid Borders & Right-aligned Page No
     tbl_toc = doc.tables[4]
     while len(tbl_toc.rows) > 1:
         tbl_toc._tbl.remove(tbl_toc.rows[1]._tr)
@@ -406,6 +468,7 @@ def main():
             if len(p.runs) > 0:
                 is_bold = not chapter_title.startswith("  ")
                 set_run_font(p.runs[0], font_name="Times New Roman", size_pt=10, bold=is_bold)
+    style_table_borders(tbl_toc, border_color="CCCCCC", sz="4")
 
     print("[2/6] Cleaning up placeholder elements between Table 7 and Bio-Data...")
     bio_idx = None
@@ -738,39 +801,39 @@ def main():
     for ref in appx.REFERENCES:
         add_p(bio_p, ref, space_before=1, space_after=3)
 
-    # Appendix: Source Code
+    # Appendix: Source Code with Consolas 9.5pt in light grey shaded boxes with xml:space preserve
     add_page_break(bio_p)
     add_chapter_heading(bio_p, "APPENDIX", "SAMPLE PROGRAM CODE")
 
     # A.1 main.py
     add_h2(bio_p, "A.1 ESP32 MicroPython Firmware (firmware/main.py)")
-    add_p(bio_p, "The complete production MicroPython firmware executed on the ESP32 in Wokwi and virtual environments:")
-    add_full_code_file(bio_p, "firmware/main.py")
+    add_p(bio_p, "The complete production MicroPython firmware executed on the ESP32 in Wokwi and virtual environments. Formatted with strict 4-space indentation:")
+    add_code_box(doc, bio_p, "firmware/main.py")
 
     # A.2 sketch.ino
     add_h2(bio_p, "A.2 ESP32 C++ Arduino Framework Firmware (firmware/sketch.ino)")
-    add_p(bio_p, "The compiled C++ Arduino firmware designed for bare-metal flashing to physical ESP32 boards:")
-    add_full_code_file(bio_p, "firmware/sketch.ino")
+    add_p(bio_p, "The compiled C++ Arduino firmware designed for bare-metal flashing to physical ESP32 boards. Formatted with standard C++ indentation:")
+    add_code_box(doc, bio_p, "firmware/sketch.ino")
 
     # A.3 risk.py
     add_h2(bio_p, "A.3 Hydrological Risk Assessment Engine (backend/app/risk.py)")
-    add_p(bio_p, "The core mathematical risk engine executing on the cloud backend:")
-    add_full_code_file(bio_p, "backend/app/risk.py")
+    add_p(bio_p, "The core mathematical risk engine executing on the cloud backend with 4-space Python indentation:")
+    add_code_box(doc, bio_p, "backend/app/risk.py")
 
     # A.4 evacuation.py
     add_h2(bio_p, "A.4 Dynamic Dijkstra Evacuation Routing Service (backend/app/evacuation.py)")
-    add_p(bio_p, "The dynamic graph routing engine computing obstacle-avoiding evacuation paths:")
-    add_full_code_file(bio_p, "backend/app/evacuation.py")
+    add_p(bio_p, "The dynamic graph routing engine computing obstacle-avoiding evacuation paths with 4-space Python indentation:")
+    add_code_box(doc, bio_p, "backend/app/evacuation.py")
 
     # A.5 alerts.py
     add_h2(bio_p, "A.5 Multilingual Citizen Notification Gateway (backend/app/alerts.py)")
-    add_p(bio_p, "The multilingual emergency dispatch service supporting Telugu, Hindi, and English:")
-    add_full_code_file(bio_p, "backend/app/alerts.py")
+    add_p(bio_p, "The multilingual emergency dispatch service supporting Telugu, Hindi, and English with 4-space Python indentation:")
+    add_code_box(doc, bio_p, "backend/app/alerts.py")
 
     # A.6 init.sql
     add_h2(bio_p, "A.6 Database Initialization & Hypertable Seed Script (db/init.sql)")
-    add_p(bio_p, "The TimescaleDB schema initialization and baseline hydrological seed script:")
-    add_full_code_file(bio_p, "db/init.sql")
+    add_p(bio_p, "The TimescaleDB schema initialization and baseline hydrological seed script with SQL block indentation:")
+    add_code_box(doc, bio_p, "db/init.sql")
 
     # Research Paper
     add_page_break(bio_p)
@@ -784,42 +847,85 @@ def main():
 
     add_page_break(bio_p)
 
-    # 12. Update Bio-Data Section at the End
-    # Format Table 8 & Table 9 cleanly without "Paste Your Photo"
-    tbl_bio1 = doc.tables[-2]
-    # Populate Student 1 info
-    tbl_bio1.rows[0].cells[0].text = "NAME"
-    tbl_bio1.rows[0].cells[1].text = ": Lagisetty Vidya Charan (23101A030061)"
-    tbl_bio1.rows[1].cells[0].text = "BRANCH & DEPT"
-    tbl_bio1.rows[1].cells[1].text = ": B.Tech - Electronics & Communication Engineering"
-    tbl_bio1.rows[2].cells[0].text = "INSTITUTION"
-    tbl_bio1.rows[2].cells[1].text = ": Mohan Babu University, Tirupati – 517 102"
-    tbl_bio1.rows[3].cells[0].text = "NATIONALITY"
-    tbl_bio1.rows[3].cells[1].text = ": Indian"
+    # 12. BIO-DATA: Format 4 comprehensive, structured tables for all 4 project members
+    # Clean up the original 2 placeholder tables at the end
+    orig_t_count = len(doc.tables)
+    tbl_bio_personal = doc.tables[-2]
+    tbl_bio_contact = doc.tables[-1]
 
-    for r in tbl_bio1.rows:
-        for c in r.cells:
-            for p in c.paragraphs:
-                p.paragraph_format.line_spacing = 1.15
-                for run in p.runs:
-                    set_run_font(run, font_name="Times New Roman", size_pt=10)
+    # Populate Student 1 in the existing tables
+    s1 = fm.STUDENT_BIOS[0]
+    tbl_bio_personal.rows[0].cells[0].text = "NAME"
+    tbl_bio_personal.rows[0].cells[1].text = f": {s1['name']} ({s1['roll']})"
+    tbl_bio_personal.rows[1].cells[0].text = "FATHER NAME"
+    tbl_bio_personal.rows[1].cells[1].text = f": {s1['father']}"
+    tbl_bio_personal.rows[2].cells[0].text = "DATE OF BIRTH"
+    tbl_bio_personal.rows[2].cells[1].text = f": {s1['dob']}"
+    tbl_bio_personal.rows[3].cells[0].text = "NATIONALITY"
+    tbl_bio_personal.rows[3].cells[1].text = f": {s1['nationality']}"
+    style_table_borders(tbl_bio_personal, border_color="CCCCCC", sz="4")
 
-    tbl_bio2 = doc.tables[-1]
-    tbl_bio2.rows[0].cells[0].text = "Contact No."
-    tbl_bio2.rows[0].cells[1].text = ": +91-XXXXXXXXXX"
-    tbl_bio2.rows[1].cells[0].text = "Email"
-    tbl_bio2.rows[1].cells[1].text = ": student@mbu.asia"
-    tbl_bio2.rows[2].cells[0].text = "Contact Address"
-    tbl_bio2.rows[2].cells[1].text = ": Department of ECE, Mohan Babu University, Tirupati – 517 102"
-    tbl_bio2.rows[3].cells[0].text = "Project Team"
-    tbl_bio2.rows[3].cells[1].text = ": L. Vidya Charan, K. Nandakishore, T. M. Ashraf, S. Sufiyan"
+    tbl_bio_contact.rows[0].cells[0].text = "Contact No."
+    tbl_bio_contact.rows[0].cells[1].text = f": {s1['phone']}"
+    tbl_bio_contact.rows[1].cells[0].text = "Email"
+    tbl_bio_contact.rows[1].cells[1].text = f": {s1['email']}"
+    tbl_bio_contact.rows[2].cells[0].text = "Contact Address"
+    tbl_bio_contact.rows[2].cells[1].text = f": {s1['address']}"
+    tbl_bio_contact.rows[3].cells[0].text = "Linkedin Id"
+    tbl_bio_contact.rows[3].cells[1].text = f": {s1['linkedin']}"
+    style_table_borders(tbl_bio_contact, border_color="CCCCCC", sz="4")
 
-    for r in tbl_bio2.rows:
-        for c in r.cells:
-            for p in c.paragraphs:
-                p.paragraph_format.line_spacing = 1.15
-                for run in p.runs:
-                    set_run_font(run, font_name="Times New Roman", size_pt=10)
+    # Add Bio-Data for Students 2, 3, and 4
+    for s in fm.STUDENT_BIOS[1:]:
+        p_head = doc.add_paragraph()
+        format_paragraph(p_head, align=WD_ALIGN_PARAGRAPH.CENTER, line_spacing=1.5, space_before=16, space_after=8)
+        r_head = p_head.add_run(f"BIO-DATA: {s['name'].upper()}")
+        set_run_font(r_head, font_name="Times New Roman", size_pt=13, bold=True)
+
+        t_p = doc.add_table(rows=4, cols=2)
+        t_p.alignment = WD_TABLE_ALIGNMENT.CENTER
+        t_p.rows[0].cells[0].text = "NAME"
+        t_p.rows[0].cells[1].text = f": {s['name']} ({s['roll']})"
+        t_p.rows[1].cells[0].text = "FATHER NAME"
+        t_p.rows[1].cells[1].text = f": {s['father']}"
+        t_p.rows[2].cells[0].text = "DATE OF BIRTH"
+        t_p.rows[2].cells[1].text = f": {s['dob']}"
+        t_p.rows[3].cells[0].text = "NATIONALITY"
+        t_p.rows[3].cells[1].text = f": {s['nationality']}"
+        style_table_borders(t_p, border_color="CCCCCC", sz="4")
+        for row in t_p.rows:
+            for c in row.cells:
+                for p in c.paragraphs:
+                    p.paragraph_format.line_spacing = 1.15
+                    for r in p.runs:
+                        set_run_font(r, font_name="Times New Roman", size_pt=10)
+
+        p_con = doc.add_paragraph()
+        format_paragraph(p_con, align=WD_ALIGN_PARAGRAPH.LEFT, line_spacing=1.5, space_before=10, space_after=4)
+        r_con = p_con.add_run("CONTACT DETAILS")
+        set_run_font(r_con, font_name="Times New Roman", size_pt=11, bold=True)
+
+        t_c = doc.add_table(rows=4, cols=2)
+        t_c.alignment = WD_TABLE_ALIGNMENT.CENTER
+        t_c.rows[0].cells[0].text = "Contact No."
+        t_c.rows[0].cells[1].text = f": {s['phone']}"
+        t_c.rows[1].cells[0].text = "Email"
+        t_c.rows[1].cells[1].text = f": {s['email']}"
+        t_c.rows[2].cells[0].text = "Contact Address"
+        t_c.rows[2].cells[1].text = f": {s['address']}"
+        t_c.rows[3].cells[0].text = "Linkedin Id"
+        t_c.rows[3].cells[1].text = f": {s['linkedin']}"
+        style_table_borders(t_c, border_color="CCCCCC", sz="4")
+        for row in t_c.rows:
+            for c in row.cells:
+                for p in c.paragraphs:
+                    p.paragraph_format.line_spacing = 1.15
+                    for r in p.runs:
+                        set_run_font(r, font_name="Times New Roman", size_pt=10)
+
+        # Page break after each student bio except the last
+        if s != fm.STUDENT_BIOS[-1]:
+            doc.add_page_break()
 
     print(f"Saving compiled Word document to {OUT_WORKSPACE_DOCX}...")
     doc.save(OUT_WORKSPACE_DOCX)
