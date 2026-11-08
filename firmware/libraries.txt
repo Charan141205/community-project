@@ -1,3 +1,2 @@
 PubSubClient
-ESP32Servo
 ArduinoJson

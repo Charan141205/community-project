@@ -1,10 +1,9 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <ESP32Servo.h>
 #include <ArduinoJson.h>
 
 // ============================================================================
-// HARDWARE PIN DEFINITIONS (Safe Non-Strapping Pins)
+// HARDWARE PIN DEFINITIONS (Wokwi ESP32 Safe Pins)
 // ============================================================================
 #define TRIG_PIN       5
 #define ECHO_PIN       18
@@ -34,13 +33,38 @@ const char* node_id     = "drain-01";
 // ============================================================================
 WiFiClient espClient;
 PubSubClient client(espClient);
-Servo gateServo;
 
 float lastDistanceCm = -1.0;
 int currentGateAngle = 0;
 unsigned long lastPublishTime = 0;
 unsigned long lastMqttCheckTime = 0;
 const unsigned long PUBLISH_INTERVAL_MS = 3000;
+
+// ============================================================================
+// NATIVE ESP32 SERVO PWM CONTROLLER (LEDC)
+// Zero external library crashes, compatible with ESP32 Core 2.x and Core 3.x
+// ============================================================================
+void initServoPWM() {
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  ledcAttach(SERVO_PIN, 50, 16);
+#else
+  ledcSetup(0, 50, 16);
+  ledcAttachPin(SERVO_PIN, 0);
+#endif
+}
+
+void setServoAngle(int angle) {
+  angle = constrain(angle, 0, 180);
+  // SG90 standard: 500 us (0 deg) to 2400 us (180 deg)
+  // 50 Hz PWM period = 20,000 us, 16-bit resolution = 65,535 ticks
+  long pulseWidthUs = 500 + ((long)angle * (2400 - 500) / 180);
+  long duty = (pulseWidthUs * 65535L) / 20000L;
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  ledcWrite(SERVO_PIN, duty);
+#else
+  ledcWrite(0, duty);
+#endif
+}
 
 // ============================================================================
 // 5-SAMPLE MEDIAN FILTER FOR ULTRASONIC SENSOR
@@ -85,7 +109,11 @@ float readRainRateMmH() {
 // MQTT CALLBACK (REMOTE SCADA COMMANDS)
 // ============================================================================
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument doc;
+#else
   StaticJsonDocument<256> doc;
+#endif
   DeserializationError err = deserializeJson(doc, payload, length);
   if (!err) {
     int targetAngle = -1;
@@ -98,7 +126,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     if (targetAngle >= 0) {
       targetAngle = constrain(targetAngle, 0, 90);
       currentGateAngle = targetAngle;
-      gateServo.write(currentGateAngle);
+      setServoAngle(currentGateAngle);
       Serial.printf("[SCADA COMMAND] Remote Gate Angle: %d deg\n", currentGateAngle);
     }
   }
@@ -123,7 +151,7 @@ void reconnectMQTT() {
 // ============================================================================
 void setup() {
   Serial.begin(115200);
-  delay(300);
+  delay(500);
 
   Serial.println(F("\n=============================================="));
   Serial.println(F("   flood-ews ESP32 Node Booting... "));
@@ -136,16 +164,15 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(POT_PIN, INPUT);
 
+  // Initialize LED states
   digitalWrite(LED_GREEN_PIN, HIGH);
   digitalWrite(LED_RED_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
 
-  // Attach servo to Pin 19
-  gateServo.setPeriodHertz(50);
-  gateServo.attach(SERVO_PIN, 500, 2400);
-  gateServo.write(0); // Default Open
-
-  Serial.println(F("[HARDWARE] Servo attached to GPIO 19. Initial angle: 0 deg (OPEN)."));
+  // Initialize Native LEDC Servo PWM
+  initServoPWM();
+  setServoAngle(0); // Default Open (0 deg)
+  Serial.println(F("[HARDWARE] Native LEDC Servo initialized on GPIO 19. Initial angle: 0 deg (OPEN)."));
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -195,7 +222,7 @@ void loop() {
   }
 
   // Actuate Servo
-  gateServo.write(currentGateAngle);
+  setServoAngle(currentGateAngle);
 
   // Publish Telemetry on Slider Shift (>= 5cm difference) or Timer Interval
   if (abs(distCm - lastDistanceCm) >= 5.0f || (now - lastPublishTime >= PUBLISH_INTERVAL_MS)) {
@@ -206,25 +233,15 @@ void loop() {
                   distCm, waterDepthCm, fillPercentage, currentGateAngle);
 
     if (client.connected()) {
-      StaticJsonDocument<256> doc;
-      doc["node"]           = node_id;
-      doc["node_id"]        = node_id;
-      doc["depth_cm"]       = waterDepthCm;
-      doc["water_depth_cm"] = waterDepthCm;
-      doc["fill_percentage"]= fillPercentage;
-      doc["ratio"]          = fillPercentage / 100.0f;
-      doc["rain_mm_h"]      = rainMmH;
-      doc["gate_deg"]       = currentGateAngle;
-      doc["gate_angle"]     = currentGateAngle;
-      doc["ts"]             = now / 1000;
-      doc["rssi"]           = WiFi.RSSI();
-
       char buffer[256];
-      serializeJson(doc, buffer);
+      snprintf(buffer, sizeof(buffer),
+        "{\"node\":\"%s\",\"node_id\":\"%s\",\"depth_cm\":%.1f,\"water_depth_cm\":%.1f,\"fill_percentage\":%.1f,\"ratio\":%.2f,\"rain_mm_h\":%.1f,\"gate_deg\":%d,\"gate_angle\":%d,\"ts\":%lu,\"rssi\":%d}",
+        node_id, node_id, waterDepthCm, waterDepthCm, fillPercentage, fillPercentage / 100.0f, rainMmH, currentGateAngle, currentGateAngle, (unsigned long)(now / 1000), WiFi.RSSI()
+      );
       client.publish("ews/telemetry/drain-01", buffer);
       client.publish("flood/v1/drain-01/telemetry", buffer);
     }
   }
 
-  delay(20);
+  delay(50); // Fast 50ms cycle for instant UI slider responsiveness
 }
