@@ -6,7 +6,9 @@
 [![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PostgreSQL-FDB515.svg?logo=postgresql&logoColor=white)](https://www.timescale.com)
 [![MQTT](https://img.shields.io/badge/MQTT-v5.0%20%7C%20v3.1.1-660066.svg?logo=eclipse-mosquitto&logoColor=white)](https://mosquitto.org)
 
-`flood-ews` is an end-to-end IoT, geospatial, and urban resilience early warning system designed to protect vulnerable neighborhoods and low-lying roadways from flash floods and sewer backflow. Centered on flood flashpoints along the Musi River basin in Hyderabad, India, it integrates simulated ESP32 sensor nodes, an automated SCADA floodgate controller, a TimescaleDB time-series backend, a multilingual disaster alert dispatcher, dynamic evacuation routing, and an interactive Next.js map dashboard.
+`flood-ews` is an end-to-end IoT, geospatial, and urban resilience early warning system designed to protect vulnerable neighborhoods and low-lying roadways from flash floods and sewer backflow. Centered on flood flashpoints along the Musi River basin in Hyderabad, India, it integrates virtual ESP32 sensor nodes simulated in **Wokwi** (with zero physical hardware required), an automated SCADA floodgate controller, a TimescaleDB time-series backend, a multilingual disaster alert dispatcher, dynamic evacuation routing, and an interactive Next.js map dashboard.
+
+> 💡 **100% Simulation-Based**: This project runs entirely via software simulation using **Wokwi** (for interactive ESP32, ultrasonic, potentiometer, servo, and buzzer hardware) and a multi-node Python simulator. No physical microcontrollers or sensors are required!
 
 ---
 
@@ -164,8 +166,8 @@ All 24 test cases pass with 100% coverage, verifying:
 
 ## 📚 Detailed Documentation
 
-- 📐 [**System Architecture & Data Flows**](docs/ARCHITECTURE.md)
-- 🔌 [**REST & WebSocket API Reference**](docs/API_REFERENCE.md)
-- 📲 [**Live Twilio SMS & WhatsApp Setup Guide**](docs/TWILIO_SETUP.md)
-- 🛠️ [**ESP32 Firmware & Hardware Flashing Guide**](docs/FIRMWARE_WOKWI_GUIDE.md)
-- 📋 [**Full Verification Report & Proofs**](docs/VERIFICATION_REPORT.md)
+- 🕹️ [**Wokwi ESP32 Virtual Simulation Guide**](docs/WOKWI_SIMULATION_GUIDE.md) — *Step-by-step browser simulation, virtual sensors, and cloud MQTT sync*
+- 📐 [**System Architecture & Data Flows**](docs/ARCHITECTURE.md) — *Data pipeline, hysteresis formulas, and failover autonomy*
+- 🔌 [**REST & WebSocket API Reference**](docs/API_REFERENCE.md) — *OpenAPI endpoints and real-time WebSocket protocol*
+- 📲 [**Emergency SMS & WhatsApp Setup**](docs/TWILIO_SETUP.md) — *Multilingual alert notification guide*
+- 📋 [**Full Verification Report & Proofs**](docs/VERIFICATION_REPORT.md) — *Automated test results and portal screenshots*
