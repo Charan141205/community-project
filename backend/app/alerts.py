@@ -202,3 +202,54 @@ def create_default_alert_manager() -> AlertManager:
 
 # Global Alert Manager Singleton
 alert_manager = create_default_alert_manager()
+
+
+async def send_multilingual_alert(
+    node_id: str,
+    node_name: str,
+    ward: str,
+    level: str,
+    ratio: float,
+    rain_mm_h: float,
+    evac_link: str,
+    subscribers: Optional[List[Dict]] = None,
+) -> int:
+    """
+    Top-level production helper to dispatch localized SMS and WhatsApp alerts to citizens.
+    Uses live TwilioProvider when credentials are configured, or MockProvider for development.
+    Dispatches alerts in Telugu, Hindi, and English with dynamic evacuation shelter links.
+    """
+    if not alert_manager.should_send_alert(node_id):
+        logger.info(f"Alert for [{node_id}] suppressed by 15-minute rate-limiting cooldown.")
+        return 0
+
+    alert_manager.record_alert_sent(node_id)
+    if subscribers is None:
+        from backend.app.db import db
+        subscribers = await db.get_subscribers_by_ward(ward)
+
+    dispatched = 0
+    for sub in subscribers:
+        lang = sub.get("language", "en")
+        phone = sub.get("phone", "")
+        if not phone:
+            continue
+
+        msg = alert_manager.format_message(
+            language=lang,
+            level=level,
+            node_name=node_name,
+            ward=ward,
+            ratio=ratio,
+            rain_mm_h=rain_mm_h,
+            evac_link=evac_link,
+        )
+
+        # Dispatch via live Twilio SMS or WhatsApp
+        channel = "whatsapp" if sub.get("preferred_channel") == "whatsapp" else "sms"
+        success = await alert_manager.provider.send_message(phone, msg, channel=channel)
+        if success:
+            dispatched += 1
+
+    return dispatched
+
